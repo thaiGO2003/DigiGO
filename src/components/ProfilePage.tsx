@@ -23,18 +23,31 @@ export default function ProfilePage() {
     setMessage({ type: '', text: '' })
 
     try {
+      // Get current session to ensure auth
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
+      }
+
       const { error } = await supabase
         .from('users')
         .update({ full_name: fullName })
         .eq('id', user.id)
 
-      if (error) throw error
+      if (error) {
+        console.error('Update error:', error)
+        throw new Error(error.message || 'Không thể cập nhật thông tin')
+      }
 
       await refreshProfile() // Refresh user data in context
       setMessage({ type: 'success', text: 'Cập nhật thông tin thành công!' })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error)
-      setMessage({ type: 'error', text: 'Có lỗi xảy ra khi cập nhật.' })
+      setMessage({ 
+        type: 'error', 
+        text: error.message || 'Có lỗi xảy ra khi cập nhật.' 
+      })
     } finally {
       setLoading(false)
     }
