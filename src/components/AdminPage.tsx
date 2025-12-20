@@ -172,7 +172,7 @@ export default function AdminPage() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Bảng điều khiển Admin</h1>
         <div className="text-sm text-gray-600">
-          Xin chào, <span className="font-semibold">{user?.email}</span>
+          Xin chào, <span className="font-semibold">{user?.full_name || user?.email}</span>
         </div>
       </div>
 
@@ -363,7 +363,8 @@ export default function AdminPage() {
                       : 'hover:bg-gray-100'
                   }`}
                 >
-                  {chatUser.email}
+                  <div className="font-medium">{chatUser.full_name || chatUser.email}</div>
+                  {chatUser.full_name && <div className="text-xs text-gray-500">{chatUser.email}</div>}
                 </button>
               ))}
             </div>
@@ -374,7 +375,8 @@ export default function AdminPage() {
             {selectedUser ? (
               <>
                 <div className="p-4 border-b">
-                  <h3 className="font-semibold">{selectedUser.email}</h3>
+                  <h3 className="font-semibold">{selectedUser.full_name || selectedUser.email}</h3>
+                  {selectedUser.full_name && <p className="text-xs text-gray-500">{selectedUser.email}</p>}
                 </div>
                 <div className="flex-1 p-4 overflow-y-auto space-y-3">
                   {messages.map((message) => (
