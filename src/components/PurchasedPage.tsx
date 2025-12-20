@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Package, Calendar, CreditCard, Key, Copy, CheckCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -13,6 +13,7 @@ interface PurchaseDetail {
   product_name?: string
   duration_days?: number
   key_value?: string
+  guide_url?: string
 }
 
 export default function PurchasedPage() {
@@ -53,7 +54,8 @@ export default function PurchasedPage() {
           ),
           product_keys (
             key_value
-          )
+          ),
+          guide_url
         `)
         .eq('user_id', user.id)
         .eq('type', 'purchase')
@@ -69,7 +71,8 @@ export default function PurchasedPage() {
         variant_name: t.product_variants?.name,
         product_name: t.product_variants?.products?.name,
         duration_days: t.product_variants?.duration_days,
-        key_value: t.product_keys?.key_value
+        key_value: t.product_keys?.key_value,
+        guide_url: t.product_variants?.guide_url || t.product_variants?.products?.guide_url
       }))
 
       setPurchases(formattedPurchases)
@@ -110,9 +113,9 @@ export default function PurchasedPage() {
             <p className="text-gray-600">Vui lòng đăng nhập để xem lịch sử mua hàng</p>
           </div>
         </div>
-        <AuthModal 
-          isOpen={showAuthModal} 
-          onClose={() => setShowAuthModal(false)} 
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
         />
       </>
     )
@@ -230,6 +233,25 @@ export default function PurchasedPage() {
                         </p>
                       </div>
                     </div>
+
+                    {purchase.guide_url && (
+                      <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Package className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-900">Hướng dẫn cài đặt:</span>
+                          </div>
+                          <a
+                            href={purchase.guide_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:text-blue-800 font-bold underline flex items-center"
+                          >
+                            Xem hướng dẫn (Google Word)
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

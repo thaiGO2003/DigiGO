@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import Turnstile from 'react-turnstile'
 import { X, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
@@ -10,12 +11,16 @@ interface AuthModalProps {
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
+  const [username, setUsername] = useState('')
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [referralCode, setReferralCode] = useState('')
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   
   const { signIn, signUp, resetPassword } = useAuth()
 
@@ -29,18 +34,36 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   }, [isOpen])
 
+  useEffect(() => {
+    setCaptchaToken(null)
+  }, [mode, isOpen])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setMessage('')
 
+    // Check Captcha for login and register
+    if (mode !== 'forgot' && !captchaToken && import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY) {
+      setMessage('Vui lòng hoàn thành xác thực bảo mật (Captcha)')
+      setLoading(false)
+      return
+    }
+
     try {
       if (mode === 'login') {
-        const { error } = await signIn(email, password)
+        const { error } = await signIn(email, password, captchaToken || undefined)
         if (error) throw error
         onClose()
       } else if (mode === 'register') {
-        const { error } = await signUp(email, password)
+        if (password !== confirmPassword) {
+          throw new Error('Mật khẩu xác nhận không khớp')
+        }
+        if (!/^[a-zA-Z0-9_]{3,50}$/.test(username)) {
+          throw new Error('Tên đăng nhập không hợp lệ (3-50 ký tự, chỉ chữ, số và gạch dưới)')
+        }
+
+        const { error } = await signUp(email, password, username, fullName, captchaToken || undefined)
         if (error) throw error
         
         // If there's a referral code (from URL or manual input), wait a bit then set the referrer
@@ -91,11 +114,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg w-full max-w-md">
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold">
-            {mode === 'login' && 'Đăng nhập'}
-            {mode === 'register' && 'Đăng ký'}
-            {mode === 'forgot' && 'Quên mật khẩu'}
-          </h2>
+          <div>
+            <h2 className="text-xl font-semibold">
+              {mode === 'login' && 'Đăng nhập'}
+              {mode === 'register' && 'Đăng ký tài khoản'}
+              {mode === 'forgot' && 'Quên mật khẩu'}
+            </h2>
+            {mode === 'register' && (
+              <p className="text-sm text-gray-500 mt-1">
+                Hoặc <button onClick={() => setMode('login')} className="text-blue-600 hover:underline">đăng nhập</button> nếu đã có tài khoản
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -105,16 +135,52 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {mode === 'register' && (
+            <>
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên đăng nhập
+                </label>
+                <input
+                  type="text"
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Username123"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">3-50 ký tự, chỉ chữ, số và gạch dưới</p>
+              </div>
+
+              <div>
+                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Họ tên
+                </label>
+                <input
+                  type="text"
+                  id="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Nguyễn Văn A"
+                  required
+                />
+              </div>
+            </>
+          )}
+
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+              {mode === 'login' ? 'Email hoặc Tên đăng nhập' : 'Email (để khôi phục tài khoản)'}
             </label>
             <input
-              type="email"
+              type={mode === 'login' ? 'text' : 'email'}
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              placeholder={mode === 'register' ? "Your@email.com" : "Email hoặc Tên đăng nhập"}
               required
             />
           </div>
@@ -131,6 +197,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 pr-10"
+                  placeholder={mode === 'register' ? "Tối thiểu 6 ký tự" : "Nhập Mật khẩu"}
                   required
                   minLength={6}
                 />
@@ -151,19 +218,50 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
           {mode === 'register' && (
             <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                Xác nhận mật khẩu
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 pr-10"
+                  placeholder="Nhập lại Mật khẩu"
+                  required
+                  minLength={6}
+                />
+              </div>
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <div>
               <label htmlFor="referralCode" className="block text-sm font-medium text-gray-700 mb-2">
-                Mã giới thiệu (không bắt buộc)
+                Mã giới thiệu <span className="text-gray-400 font-normal">(tùy chọn)</span>
               </label>
               <input
                 type="text"
                 id="referralCode"
                 value={referralCode}
                 onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                placeholder="Nhập mã giới thiệu"
+                placeholder="Nhập Mã giới thiệu nếu có"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 uppercase"
                 maxLength={8}
               />
-              <p className="text-xs text-gray-500 mt-1">Nếu bạn được giới thiệu, hãy nhập mã tại đây</p>
+            </div>
+          )}
+
+          {/* Cloudflare Turnstile */}
+          {mode !== 'forgot' && import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY && (
+            <div className="flex justify-center my-4">
+              <Turnstile
+                sitekey={import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY}
+                onVerify={(token) => setCaptchaToken(token)}
+                onExpire={() => setCaptchaToken(null)}
+                onError={() => setCaptchaToken(null)}
+              />
             </div>
           )}
 

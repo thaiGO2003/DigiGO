@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { MessageCircle, X, Send, User } from 'lucide-react'
 import { supabase, ChatMessage } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { sendTelegramNotification } from '../lib/telegram'
 import AuthModal from './AuthModal'
 
 export default function ChatWidget() {
@@ -99,6 +100,13 @@ export default function ChatWidget() {
         })
 
       if (error) throw error
+      
+      // Send Telegram notification if user is not admin
+      if (user.email !== 'luongquocthai.thaigo.2003@gmail.com') {
+        const telegramMsg = `<b>Tin nhắn mới từ khách hàng:</b>\n\nUser: ${user.email}\nNội dung: ${newMessage.trim()}`
+        sendTelegramNotification(telegramMsg)
+      }
+
       setNewMessage('')
     } catch (error) {
       console.error('Error sending message:', error)
@@ -190,7 +198,7 @@ export default function ChatWidget() {
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Nhập tin nhắn..."
+                    placeholder="Nhập Tin nhắn..."
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
                   <button

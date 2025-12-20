@@ -1,4 +1,3 @@
-import React from 'react'
 import { Shield, Headphones, Zap, Award } from 'lucide-react'
 
 export default function AboutPage() {

@@ -16,7 +16,7 @@ export function useAuth() {
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         await fetchUserProfile(session.user.id)
       } else {
@@ -27,6 +27,17 @@ export function useAuth() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Auto-refresh profile every 10 seconds to keep balance/info updated
+  useEffect(() => {
+    if (!user) return
+
+    const interval = setInterval(() => {
+      refreshProfile()
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [user?.id])
 
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -56,18 +67,44 @@ export function useAuth() {
     }
   }
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (identity: string, password: string, captchaToken?: string) => {
+    let emailToUse = identity
+
+    // Nếu không phải là email, tìm email từ username
+    if (!identity.includes('@')) {
+      const { data: resolvedEmail, error: rpcError } = await supabase.rpc('get_email_by_identity', {
+        p_identity: identity
+      })
+
+      if (resolvedEmail) {
+        emailToUse = resolvedEmail
+      } else if (!rpcError) {
+        // RPC thành công nhưng không tìm thấy user
+        return { error: { message: 'Tên đăng nhập không tồn tại' } as any }
+      }
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: emailToUse,
       password,
+      options: {
+        captchaToken
+      }
     })
     return { error }
   }
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, username?: string, fullName?: string, captchaToken?: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          username,
+          full_name: fullName,
+        },
+        captchaToken
+      },
     })
     return { error }
   }

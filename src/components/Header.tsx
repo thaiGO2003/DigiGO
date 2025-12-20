@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { ShoppingCart, User, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import AuthModal from './AuthModal'
@@ -12,9 +12,9 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
   const { user, signOut } = useAuth()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  
+
   // Check if user is admin
-  const isAdmin = user?.email === 'luongquocthai.thaigo.2003@gmail.com' || user?.is_admin
+  const isAdmin = user?.email?.toLowerCase() === 'luongquocthai.thaigo.2003@gmail.com' || user?.is_admin
 
   const menuItems = [
     { key: 'purchased', label: 'Đã Mua' },
@@ -51,7 +51,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <div 
+            <div
               className="flex items-center cursor-pointer"
               onClick={() => onNavigate('products')}
             >
@@ -65,11 +65,10 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
                 <button
                   key={item.key}
                   onClick={() => handleNavigation(item.key)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                    currentPage === item.key
-                      ? 'text-blue-600 bg-blue-50'
-                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                  }`}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${currentPage === item.key
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                    }`}
                 >
                   {item.label}
                 </button>
@@ -79,7 +78,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
             {/* User Info & Auth */}
             <div className="flex items-center space-x-3 sm:space-x-4">
               {user && (
-                <div 
+                <div
                   onClick={() => onNavigate('profile')}
                   className="hidden sm:flex items-center space-x-3 px-3 py-1.5 rounded-full border border-gray-200 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
                   title="Xem trang cá nhân"
@@ -106,13 +105,13 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
                 className="hidden sm:flex items-center justify-center p-2 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                 title="Tham gia nhóm Zalo"
               >
-                <img 
-                  src="https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg" 
-                  alt="Zalo" 
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg"
+                  alt="Zalo"
                   className="w-6 h-6"
                 />
               </a>
-              
+
               <button
                 onClick={handleAccountAction}
                 className="flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors duration-200"
@@ -146,11 +145,10 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
                   <button
                     key={item.key}
                     onClick={() => handleNavigation(item.key)}
-                    className={`px-3 py-2 rounded-md text-left text-sm font-medium transition-colors duration-200 ${
-                      currentPage === item.key
-                        ? 'text-blue-600 bg-blue-50'
-                        : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                    }`}
+                    className={`px-3 py-2 rounded-md text-left text-sm font-medium transition-colors duration-200 ${currentPage === item.key
+                      ? 'text-blue-600 bg-blue-50'
+                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                      }`}
                   >
                     {item.label}
                   </button>
@@ -169,9 +167,9 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
         </div>
       </header>
 
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)} 
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
       />
     </>
   )

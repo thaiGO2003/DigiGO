@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Search, RotateCcw, ShoppingCart, Package, AlertTriangle } from 'lucide-react'
 import { supabase, Product, ProductVariant } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { sendTelegramNotification } from '../lib/telegram'
 import AuthModal from './AuthModal'
 
 export default function ProductsPage() {
@@ -109,6 +110,15 @@ export default function ProductsPage() {
       if (error) throw error
 
       if (data?.success) {
+        // Send Telegram notifications
+        const orderMsg = `<b>Đơn hàng mới!</b>\n\nUser: ${user.email}\nSản phẩm: ${selectedProductName}\nGói: ${selectedVariant.name}\nGiá: ${selectedVariant.price.toLocaleString('vi-VN')}đ`
+        sendTelegramNotification(orderMsg)
+
+        if ((selectedVariant.stock || 0) <= 1) {
+          const oosMsg = `<b>⚠️ CẢNH BÁO HẾT HÀNG!</b>\n\nSản phẩm: ${selectedProductName}\nGói: ${selectedVariant.name}\nKho đã hết key.`
+          sendTelegramNotification(oosMsg)
+        }
+
         alert(`Mua hàng thành công!\n\nKey của bạn: ${data.key_value}\n\nVui lòng lưu lại key này!`)
         await refreshProfile()
         await fetchProducts()
@@ -201,7 +211,7 @@ export default function ProductsPage() {
               type="text"
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              placeholder="Tìm kiếm sản phẩm..."
+              placeholder="Tìm kiếm Sản phẩm..."
               className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>

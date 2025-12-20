@@ -6,14 +6,45 @@ import { useAuth } from '../hooks/useAuth'
 export default function ProfilePage() {
   const { user, signOut, refreshProfile } = useAuth()
   const [fullName, setFullName] = useState('')
+  const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
+  const [countdown, setCountdown] = useState<string | null>(null)
 
   useEffect(() => {
-    if (user?.full_name) {
-      setFullName(user.full_name)
+    if (user) {
+      setFullName(user.full_name || '')
+      setUsername(user.username || '')
     }
   }, [user])
+
+  useEffect(() => {
+    if (!user?.last_username_change) {
+      setCountdown(null)
+      return
+    }
+
+    const updateCountdown = () => {
+      const lastChange = new Date(user.last_username_change!).getTime()
+      const nextChange = lastChange + (24 * 60 * 60 * 1000)
+      const now = new Date().getTime()
+      const diff = nextChange - now
+
+      if (diff <= 0) {
+        setCountdown(null)
+      } else {
+        const hours = Math.floor(diff / (1000 * 60 * 60))
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+        setCountdown(`${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+      }
+    }
+
+    updateCountdown()
+    const timer = setInterval(updateCountdown, 1000)
+
+    return () => clearInterval(timer)
+  }, [user?.last_username_change])
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,28 +56,41 @@ export default function ProfilePage() {
     try {
       // Get current session to ensure auth
       const { data: { session } } = await supabase.auth.getSession()
-      
+
       if (!session) {
         throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
       }
 
-      const { error } = await supabase
+      // Update full name
+      const { error: updateError } = await supabase
         .from('users')
         .update({ full_name: fullName })
         .eq('id', user.id)
 
-      if (error) {
-        console.error('Update error:', error)
-        throw new Error(error.message || 'Không thể cập nhật thông tin')
+      if (updateError) {
+        throw updateError
+      }
+
+      // Update username if changed
+      if (username !== user.username) {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('update_username', {
+          p_new_username: username
+        })
+
+        if (rpcError) throw rpcError
+
+        if (!rpcData.success) {
+          throw new Error(rpcData.message)
+        }
       }
 
       await refreshProfile() // Refresh user data in context
       setMessage({ type: 'success', text: 'Cập nhật thông tin thành công!' })
     } catch (error: any) {
       console.error('Error updating profile:', error)
-      setMessage({ 
-        type: 'error', 
-        text: error.message || 'Có lỗi xảy ra khi cập nhật.' 
+      setMessage({
+        type: 'error',
+        text: error.message || 'Có lỗi xảy ra khi cập nhật.'
       })
     } finally {
       setLoading(false)
@@ -67,14 +111,34 @@ export default function ProfilePage() {
 
         <div className="p-6 space-y-6">
           {message.text && (
-            <div className={`p-4 rounded-md ${
-              message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-            }`}>
+            <div className={`p-4 rounded-md ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+              }`}>
               {message.text}
             </div>
           )}
 
           <form onSubmit={handleUpdateProfile} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tên đăng nhập
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Nhập Tên đăng nhập"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Chỉ được đổi 1 lần mỗi 24 giờ. 3-50 ký tự, chỉ chữ, số và gạch dưới.
+              </p>
+              {countdown && (
+                <p className="text-xs text-yellow-500 font-medium mt-1">
+                  Thời gian còn lại: {countdown}
+                </p>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email
@@ -93,7 +157,7 @@ export default function ProfilePage() {
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Nhập họ và tên của bạn"
+                placeholder="Nhập Họ và Tên của bạn"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               />
             </div>

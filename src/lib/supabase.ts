@@ -8,11 +8,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export type User = {
   id: string
   email: string
+  username?: string
   full_name?: string
   balance: number
   is_admin: boolean
   referral_code?: string
   referred_by?: string
+  last_username_change?: string
   created_at: string
 }
 
@@ -34,6 +36,7 @@ export type Product = {
   weaknesses?: string
   image_url?: string
   category: string
+  guide_url?: string
   created_at: string
   variants?: ProductVariant[]
 }
@@ -47,6 +50,7 @@ export type ProductVariant = {
   duration_days?: number
   description?: string
   stock?: number
+  guide_url?: string
   created_at: string
 }
 
@@ -75,5 +79,15 @@ export type ChatMessage = {
   admin_id?: string
   message: string
   is_admin: boolean
+  created_at: string
+}
+
+export type BankConfig = {
+  id: string
+  bank_id: string
+  bank_name: string
+  account_number: string
+  account_name: string
+  is_active: boolean
   created_at: string
 }

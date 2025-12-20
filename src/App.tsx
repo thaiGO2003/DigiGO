@@ -7,6 +7,7 @@ import AboutPage from './components/AboutPage'
 import AdminPage from './components/AdminPage'
 import ProfilePage from './components/ProfilePage'
 import ReferralPage from './components/ReferralPage'
+import PaymentReturnPage from './components/PaymentReturnPage'
 import ChatWidget from './components/ChatWidget'
 import { useAuth } from './hooks/useAuth'
 
@@ -15,7 +16,7 @@ function App() {
   const { user, loading } = useAuth()
 
   // Check if user is admin
-  const isAdmin = user?.email === 'luongquocthai.thaigo.2003@gmail.com' || user?.is_admin
+  const isAdmin = user?.email?.toLowerCase() === 'luongquocthai.thaigo.2003@gmail.com' || user?.is_admin
 
   if (loading) {
     return (
@@ -41,6 +42,8 @@ function App() {
         return <AdminPage />
       case 'profile':
         return <ProfilePage />
+      case 'payment-return':
+        return <PaymentReturnPage onNavigate={(page) => setCurrentPage(page)} />
       default:
         return <ProductsPage />
     }
@@ -48,8 +51,8 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header 
-        currentPage={currentPage} 
+      <Header
+        currentPage={currentPage}
         onNavigate={(page) => {
           // Special handling for admin route
           if (page === 'admin') {
@@ -59,25 +62,15 @@ function App() {
           } else {
             setCurrentPage(page)
           }
-        }} 
+        }}
       />
-      
+
       <main className="pb-20">
         {renderPage()}
       </main>
 
       {/* Admin Access - Hidden button for the specified admin email */}
-      {isAdmin && (
-        <button
-          onClick={() => setCurrentPage('admin')}
-          className="fixed bottom-20 left-6 bg-red-600 text-white p-3 rounded-full shadow-lg hover:bg-red-700 transition-colors z-40"
-          title="Admin Panel"
-        >
-          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-          </svg>
-        </button>
-      )}
+      {/* Button removed as requested */}
 
       <ChatWidget />
     </div>
