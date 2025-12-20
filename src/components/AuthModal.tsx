@@ -15,7 +15,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [referralCode, setReferralCode] = useState<string | null>(null)
+  const [referralCode, setReferralCode] = useState('')
   
   const { signIn, signUp, resetPassword } = useAuth()
 
@@ -40,25 +40,32 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         if (error) throw error
         onClose()
       } else if (mode === 'register') {
-        const { error, data } = await signUp(email, password)
+        const { error } = await signUp(email, password)
         if (error) throw error
         
-        // If there's a referral code, set the referrer
-        if (referralCode && data?.user) {
-          try {
-            const { data: refData, error: refError } = await supabase.rpc('set_referrer', {
-              p_user_id: data.user.id,
-              p_referral_code: referralCode
-            })
-            
-            if (refError) {
-              console.error('Error setting referrer:', refError)
-            } else if (refData?.success) {
-              console.log('Referrer set successfully')
+        // If there's a referral code (from URL or manual input), wait a bit then set the referrer
+        if (referralCode.trim()) {
+          setTimeout(async () => {
+            try {
+              const { data: { user: currentUser } } = await supabase.auth.getUser()
+              if (currentUser) {
+                const { data: refData, error: refError } = await supabase.rpc('set_referrer', {
+                  p_user_id: currentUser.id,
+                  p_referral_code: referralCode.trim().toUpperCase()
+                })
+                
+                if (refError) {
+                  console.error('Error setting referrer:', refError)
+                } else if (refData?.success) {
+                  console.log('Referrer set successfully')
+                } else {
+                  console.warn('Invalid referral code')
+                }
+              }
+            } catch (refErr) {
+              console.error('Error in referral setup:', refErr)
             }
-          } catch (refErr) {
-            console.error('Error in referral setup:', refErr)
-          }
+          }, 1000)
         }
         
         setMessage('Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.')
@@ -139,6 +146,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   )}
                 </button>
               </div>
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <div>
+              <label htmlFor="referralCode" className="block text-sm font-medium text-gray-700 mb-2">
+                Mã giới thiệu (không bắt buộc)
+              </label>
+              <input
+                type="text"
+                id="referralCode"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                placeholder="Nhập mã giới thiệu"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 uppercase"
+                maxLength={8}
+              />
+              <p className="text-xs text-gray-500 mt-1">Nếu bạn được giới thiệu, hãy nhập mã tại đây</p>
             </div>
           )}
 

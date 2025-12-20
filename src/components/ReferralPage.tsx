@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Users, Calendar, DollarSign, Percent, Copy, CheckCircle, Gift } from 'lucide-react'
-import { supabase, User, ReferralEarning } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import AuthModal from './AuthModal'
 
@@ -25,7 +25,6 @@ export default function ReferralPage() {
     totalEarnings: 0
   })
   const [referredUsers, setReferredUsers] = useState<ReferredUser[]>([])
-  const [earnings, setEarnings] = useState<(ReferralEarning & { user_email?: string })[]>([])
   const [loading, setLoading] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
@@ -54,35 +53,20 @@ export default function ReferralPage() {
       if (usersError) throw usersError
       setReferredUsers(usersData || [])
 
-      // Fetch earnings
+      // Fetch earnings summary
       const { data: earningsData, error: earningsError } = await supabase
         .from('referral_earnings')
-        .select(`
-          *,
-          users!referral_earnings_referred_user_id_fkey (email)
-        `)
+        .select('amount, created_at')
         .eq('referrer_id', user.id)
-        .order('created_at', { ascending: false })
 
       if (earningsError) throw earningsError
       
-      const formattedEarnings = (earningsData || []).map((e: any) => ({
-        id: e.id,
-        referrer_id: e.referrer_id,
-        referred_user_id: e.referred_user_id,
-        transaction_id: e.transaction_id,
-        amount: e.amount,
-        created_at: e.created_at,
-        user_email: e.users?.email
-      }))
-      setEarnings(formattedEarnings)
-
       // Calculate stats
-      const totalEarnings = formattedEarnings.reduce((sum, e) => sum + e.amount, 0)
+      const totalEarnings = (earningsData || []).reduce((sum, e) => sum + e.amount, 0)
       
       const now = new Date()
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      const monthlyEarnings = formattedEarnings
+      const monthlyEarnings = (earningsData || [])
         .filter(e => new Date(e.created_at) >= firstDayOfMonth)
         .reduce((sum, e) => sum + e.amount, 0)
 
@@ -309,47 +293,6 @@ export default function ReferralPage() {
         )}
       </div>
 
-      {/* Earnings History */}
-      <div className="bg-white rounded-lg shadow-md border p-6">
-        <h2 className="text-xl font-semibold mb-4 flex items-center">
-          <DollarSign className="h-5 w-5 mr-2 text-green-600" />
-          Lịch sử hoa hồng
-        </h2>
-
-        {earnings.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <DollarSign className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-            <p>Chưa có hoa hồng nào</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {earnings.map((earning) => (
-              <div key={earning.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">
-                    Hoa hồng từ: {earning.user_email || 'N/A'}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(earning.created_at).toLocaleDateString('vi-VN', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-green-600">
-                    +{earning.amount.toLocaleString('vi-VN')}đ
-                  </p>
-                  <p className="text-xs text-gray-500">5% hoa hồng</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   )
 }
