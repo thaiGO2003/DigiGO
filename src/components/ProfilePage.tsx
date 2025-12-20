@@ -32,9 +32,12 @@ export default function ProfilePage() {
 
       await refreshProfile() // Refresh user data in context
       setMessage({ type: 'success', text: 'Cập nhật thông tin thành công!' })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error)
-      setMessage({ type: 'error', text: 'Có lỗi xảy ra khi cập nhật.' })
+      setMessage({ 
+        type: 'error', 
+        text: `Có lỗi xảy ra: ${error.message || 'Vui lòng thử lại sau.'}` 
+      })
     } finally {
       setLoading(false)
     }
