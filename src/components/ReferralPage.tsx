@@ -178,8 +178,13 @@ export default function ReferralPage() {
           <div className="flex items-center justify-between mb-2">
             <Percent className="h-8 w-8 opacity-80" />
           </div>
-          <div className="text-sm opacity-90 mb-1">Tỷ lệ hoa hồng</div>
-          <div className="text-3xl font-bold">5%</div>
+          <div className="text-sm opacity-90 mb-1">Tỷ lệ hoa hồng hiện tại</div>
+          <div className="text-3xl font-bold">{Math.min(stats.totalReferrals * 2, 10)}%</div>
+          {stats.totalReferrals < 5 && (
+            <div className="text-xs opacity-75 mt-1">
+              Còn {5 - stats.totalReferrals} người nữa đạt 10%
+            </div>
+          )}
         </div>
       </div>
 
@@ -255,9 +260,13 @@ export default function ReferralPage() {
           </h3>
           <ul className="text-sm text-yellow-700 space-y-1">
             <li>✓ Chia sẻ link giới thiệu cho bạn bè</li>
-            <li>✓ Khi họ đăng ký và mua hàng, bạn nhận <strong>5% hoa hồng</strong></li>
-            <li>✓ Hoa hồng tự động cộng vào số dư của bạn</li>
-            <li>✓ Không giới hạn số lượng người giới thiệu</li>
+            <li>✓ Hoa hồng tăng dần theo số người bạn giới thiệu:</li>
+            <li className="ml-4">• Người thứ 1: <strong>2%</strong> hoa hồng</li>
+            <li className="ml-4">• Người thứ 2: <strong>4%</strong> hoa hồng</li>
+            <li className="ml-4">• Người thứ 3: <strong>6%</strong> hoa hồng</li>
+            <li className="ml-4">• Người thứ 4: <strong>8%</strong> hoa hồng</li>
+            <li className="ml-4">• Từ người thứ 5: <strong>10%</strong> hoa hồng (tối đa)</li>
+            <li>✓ Hoa hồng tự động cộng vào số dư khi họ mua hàng</li>
           </ul>
         </div>
       </div>

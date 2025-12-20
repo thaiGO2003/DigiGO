@@ -442,7 +442,40 @@ BEGIN
 
   -- 6. Record transaction
   INSERT INTO transactions (user_id, amount, type, status, variant_id, key_id)
-  VALUES (p_user_id, -v_variant_price, 'purchase', 'completed', p_variant_id, v_key_id);
+  VALUES (p_user_id, -v_variant_price, 'purchase', 'completed', p_variant_id, v_key_id)
+  RETURNING id INTO v_transaction_id;
+
+  -- 7. Check for referrer and calculate progressive commission
+  SELECT referred_by INTO v_referrer_id
+  FROM users
+  WHERE id = p_user_id;
+
+  IF v_referrer_id IS NOT NULL THEN
+    DECLARE
+      v_referral_count integer;
+      v_commission_percent integer;
+    BEGIN
+      -- Count how many people the referrer has referred
+      SELECT COUNT(*) INTO v_referral_count
+      FROM users
+      WHERE referred_by = v_referrer_id;
+      
+      -- Calculate commission percentage: 2%, 4%, 6%, 8%, 10% (max)
+      v_commission_percent := LEAST(v_referral_count * 2, 10);
+      
+      -- Calculate commission amount
+      v_commission := (v_variant_price * v_commission_percent) / 100;
+      
+      -- Add commission to referrer balance
+      UPDATE users
+      SET balance = balance + v_commission
+      WHERE id = v_referrer_id;
+      
+      -- Record referral earning
+      INSERT INTO referral_earnings (referrer_id, referred_user_id, transaction_id, amount)
+      VALUES (v_referrer_id, p_user_id, v_transaction_id, v_commission);
+    END;
+  END IF;
 
   RETURN json_build_object(
     'success', true,

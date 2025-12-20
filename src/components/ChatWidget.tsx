@@ -11,7 +11,9 @@ export default function ChatWidget() {
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     if (user && isOpen) {
@@ -23,6 +25,11 @@ export default function ChatWidget() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    // Create notification sound
+    audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2i78OeeSwkNUKrkwXkqBSh+zPLaizsKEle06umrVhgLUKXh8bllGgU2jdXxxn0tBSh+zvHajzsKEla56++lWRgLUKHk8L1nHwU3i9bwxn4tBSd+zfHYjTsKElW36+ypWxkLT6Hk7sBoHwc5jNXxxX0tBSZ/zPHWjzoKEVa15++pWxkLTqDl7cBpIQc5i9XwxH4sBSV/y/HWjjoKEFS05O+qXRkLTaDl7L9qIQc5i9TwxH4sBCV/y/HWjToKEVS04++rXRkLTKDl7L9qIQc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkL')
+  }, [])
 
   const fetchMessages = async () => {
     if (!user) return
@@ -55,7 +62,14 @@ export default function ChatWidget() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          setMessages(prev => [...prev, payload.new as ChatMessage])
+          const newMsg = payload.new as ChatMessage
+          setMessages(prev => [...prev, newMsg])
+          
+          // If message from admin and chat is closed, play sound and increase unread
+          if (newMsg.is_admin && !isOpen) {
+            setUnreadCount(prev => prev + 1)
+            audioRef.current?.play().catch(err => console.log('Audio play failed:', err))
+          }
         }
       )
       .subscribe()
@@ -103,18 +117,28 @@ export default function ChatWidget() {
       return
     }
     setIsOpen(!isOpen)
+    if (!isOpen) {
+      setUnreadCount(0) // Reset unread when opening chat
+    }
   }
 
   return (
     <>
       {/* Chat Button */}
       <div className="fixed bottom-6 right-6 z-40">
-        <button
-          onClick={handleToggle}
-          className="bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-        >
-          {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
-        </button>
+        <div className="relative">
+          <button
+            onClick={handleToggle}
+            className="bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+          >
+            {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+          </button>
+          {unreadCount > 0 && !isOpen && (
+            <div className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-pulse">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Chat Window */}
