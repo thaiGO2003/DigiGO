@@ -1,24 +1,25 @@
 import { useState, useEffect } from 'react'
-import { Search, RotateCcw, ShoppingCart, Clock, Package } from 'lucide-react'
-import { supabase, Product } from '../lib/supabase'
+import { Search, RotateCcw, ShoppingCart, Package, AlertTriangle } from 'lucide-react'
+import { supabase, Product, ProductVariant } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import AuthModal from './AuthModal'
 
 export default function ProductsPage() {
-  const { user } = useAuth()
+  const { user, refreshProfile } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({
-    type: 'all',
     category: 'all',
     priceMin: 0,
-    priceMax: 1000000,
+    priceMax: 10000000,
     search: ''
   })
   const [showAuthModal, setShowAuthModal] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
+  const [selectedProductName, setSelectedProductName] = useState('')
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [purchasing, setPurchasing] = useState(false)
 
   useEffect(() => {
     fetchProducts()
@@ -30,11 +31,8 @@ export default function ProductsPage() {
 
   const fetchProducts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false })
-
+      const { data, error } = await supabase.rpc('get_products_with_variants')
+      
       if (error) throw error
       setProducts(data || [])
     } catch (error) {
@@ -47,98 +45,79 @@ export default function ProductsPage() {
   const applyFilters = () => {
     let filtered = products
 
-    if (filters.type !== 'all') {
-      filtered = filtered.filter(p => p.type === filters.type)
-    }
-
     if (filters.category !== 'all') {
       filtered = filtered.filter(p => p.category === filters.category)
     }
 
-    filtered = filtered.filter(p => 
-      p.price >= filters.priceMin && p.price <= filters.priceMax
-    )
-
     if (filters.search) {
       filtered = filtered.filter(p =>
         p.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        p.description.toLowerCase().includes(filters.search.toLowerCase())
+        (p.mechanism && p.mechanism.toLowerCase().includes(filters.search.toLowerCase()))
       )
     }
+
+    filtered = filtered.filter(p => {
+      const minPrice = Math.min(...(p.variants?.map(v => v.price) || [0]))
+      return minPrice >= filters.priceMin && minPrice <= filters.priceMax
+    })
 
     setFilteredProducts(filtered)
   }
 
   const resetFilters = () => {
     setFilters({
-      type: 'all',
       category: 'all',
       priceMin: 0,
-      priceMax: 1000000,
+      priceMax: 10000000,
       search: ''
     })
   }
 
-  const handlePurchase = (product: Product) => {
+  const handlePurchaseVariant = (variant: ProductVariant, productName: string) => {
     if (!user) {
       setShowAuthModal(true)
       return
     }
 
-    if (user.balance < product.price) {
+    if (user.balance < variant.price) {
       alert('Số dư không đủ. Vui lòng nạp tiền!')
       return
     }
 
-    setSelectedProduct(product)
+    if ((variant.stock || 0) <= 0) {
+      alert('Gói này đã hết hàng!')
+      return
+    }
+
+    setSelectedVariant(variant)
+    setSelectedProductName(productName)
     setShowConfirmModal(true)
   }
 
   const confirmPurchase = async () => {
-    if (!selectedProduct || !user) return
+    if (!selectedVariant || !user) return
 
-    if ((selectedProduct.quantity || 0) <= 0) {
-      alert('Sản phẩm này đã hết hàng!')
-      setShowConfirmModal(false)
-      return
-    }
-
+    setPurchasing(true)
     try {
-      // Create transaction
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          amount: -selectedProduct.price,
-          type: 'purchase',
-          status: 'completed'
-        })
+      const { data, error } = await supabase.rpc('purchase_product', {
+        p_variant_id: selectedVariant.id,
+        p_user_id: user.id
+      })
 
-      if (transactionError) throw transactionError
+      if (error) throw error
 
-      // Update user balance
-      const { error: balanceError } = await supabase
-        .from('users')
-        .update({ balance: user.balance - selectedProduct.price })
-        .eq('id', user.id)
-
-      if (balanceError) throw balanceError
-
-      // Update product quantity
-      const { error: productError } = await supabase
-        .from('products')
-        .update({ quantity: (selectedProduct.quantity || 0) - 1 })
-        .eq('id', selectedProduct.id)
-
-      if (productError) throw productError
-
-      alert('Mua hàng thành công!')
-      setShowConfirmModal(false)
-      setSelectedProduct(null)
-      fetchProducts() // Refresh list to show updated quantity
-    } catch (error) {
-      console.error('Error purchasing product:', error)
-      alert('Có lỗi xảy ra khi mua hàng')
+      if (data?.success) {
+        alert(`Mua hàng thành công!\n\nKey của bạn: ${data.key_value}\n\nVui lòng lưu lại key này!`)
+        await refreshProfile()
+        await fetchProducts()
+        setShowConfirmModal(false)
+        setSelectedVariant(null)
+      }
+    } catch (error: any) {
+      console.error('Error purchasing:', error)
+      alert(`Lỗi: ${error.message || 'Có lỗi xảy ra khi mua hàng'}`)
+    } finally {
+      setPurchasing(false)
     }
   }
 
@@ -157,22 +136,6 @@ export default function ProductsPage() {
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Loại sản phẩm
-            </label>
-            <select
-              value={filters.type}
-              onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">Tất cả</option>
-              <option value="email">Email</option>
-              <option value="key">Key</option>
-              <option value="package">Gói</option>
-            </select>
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Danh mục
@@ -214,93 +177,121 @@ export default function ProductsPage() {
               min="0"
             />
           </div>
+
+          <div className="flex items-end">
+            <button
+              onClick={resetFilters}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+            >
+              <RotateCcw className="h-4 w-4" />
+              <span>Đặt lại</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 items-end">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tìm kiếm
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                placeholder="Tìm kiếm sản phẩm..."
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Tìm kiếm
+          </label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              placeholder="Tìm kiếm sản phẩm..."
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
-          <button
-            onClick={resetFilters}
-            className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-          >
-            <RotateCcw className="h-4 w-4" />
-            <span>Đặt lại bộ lọc</span>
-          </button>
         </div>
       </div>
 
       {/* Products Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredProducts.map((product) => (
-          <div key={product.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow duration-200">
+          <div key={product.id} className="bg-white rounded-lg shadow-md border hover:shadow-lg transition-shadow">
             <img
               src={product.image_url || 'https://images.pexels.com/photos/230544/pexels-photo-230544.jpeg?auto=compress&cs=tinysrgb&w=400'}
               alt={product.name}
               className="w-full h-48 object-cover rounded-t-lg"
             />
-            <div className="p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
-              <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{product.name}</h3>
               
-              <div className="flex flex-col space-y-1 mb-3 text-sm">
-                {product.duration && (
-                  <div className="flex items-center text-gray-600">
-                    <Clock className="h-4 w-4 mr-2" />
-                    <span>Thời hạn: {product.duration}</span>
-                  </div>
-                )}
-                <div className={`flex items-center ${
-                  (product.quantity || 0) <= 0 
-                    ? 'text-red-600 font-bold' 
-                    : (product.quantity || 0) < 10 
-                      ? 'text-red-600 font-medium' 
-                      : 'text-gray-600'
-                }`}>
-                  <Package className="h-4 w-4 mr-2" />
-                  <span>
-                    {(product.quantity || 0) <= 0 
-                      ? 'Tạm hết hàng' 
-                      : (product.quantity || 0) < 10 
-                        ? `Sắp hết hàng: ${product.quantity}` 
-                        : `Còn lại: ${product.quantity}`
-                    }
-                  </span>
+              {product.mechanism && (
+                <div className="mb-3">
+                  <p className="text-sm font-semibold text-gray-700 mb-1">Cơ chế:</p>
+                  <p className="text-sm text-gray-600">{product.mechanism}</p>
+                </div>
+              )}
+
+              {product.recommended_model && (
+                <div className="mb-3">
+                  <p className="text-sm font-semibold text-gray-700 mb-1">Model khuyến dùng:</p>
+                  <p className="text-sm text-blue-600">{product.recommended_model}</p>
+                </div>
+              )}
+
+              {product.strengths && (
+                <div className="mb-3">
+                  <p className="text-sm font-semibold text-green-700 mb-1">Điểm mạnh:</p>
+                  <p className="text-sm text-gray-600">{product.strengths}</p>
+                </div>
+              )}
+
+              {product.weaknesses && (
+                <div className="mb-3">
+                  <p className="text-sm font-semibold text-red-700 mb-1">Điểm yếu:</p>
+                  <p className="text-sm text-gray-600">{product.weaknesses}</p>
+                </div>
+              )}
+
+              <div className="mt-4 border-t pt-4">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Chọn gói:</p>
+                <div className="space-y-2">
+                  {product.variants?.map((variant) => (
+                    <div key={variant.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-900">{variant.name}</span>
+                          {(variant.stock || 0) <= 0 && (
+                            <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">
+                              Hết hàng
+                            </span>
+                          )}
+                          {(variant.stock || 0) > 0 && (variant.stock || 0) < 5 && (
+                            <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              Sắp hết
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-lg font-bold text-blue-600">
+                            {variant.price.toLocaleString('vi-VN')}đ
+                          </span>
+                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <Package className="h-3 w-3" />
+                            {variant.stock || 0} còn lại
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handlePurchaseVariant(variant, product.name)}
+                        disabled={(variant.stock || 0) <= 0}
+                        className={`ml-3 px-4 py-2 rounded-md font-medium transition-colors flex items-center gap-2 ${
+                          (variant.stock || 0) <= 0
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                      >
+                        <ShoppingCart className="h-4 w-4" />
+                        {(variant.stock || 0) <= 0 ? 'Hết' : 'Mua'}
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xl font-bold text-blue-600">
-                  {product.price.toLocaleString('vi-VN')}đ
-                </span>
-                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                  {product.type}
-                </span>
-              </div>
-              <button
-                onClick={() => handlePurchase(product)}
-                disabled={(product.quantity || 0) <= 0}
-                className={`w-full flex items-center justify-center space-x-2 py-2 px-4 rounded-md transition-colors ${
-                  (product.quantity || 0) <= 0
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                <ShoppingCart className="h-4 w-4" />
-                <span>{(product.quantity || 0) <= 0 ? 'Hết hàng' : 'Mua ngay'}</span>
-              </button>
             </div>
           </div>
         ))}
@@ -309,36 +300,43 @@ export default function ProductsPage() {
       {filteredProducts.length === 0 && (
         <div className="text-center py-12">
           <div className="text-gray-500 text-lg">
-            {products.length === 0 ? '0 sản phẩm' : 'Không tìm thấy sản phẩm nào phù hợp'}
+            {products.length === 0 ? 'Chưa có sản phẩm' : 'Không tìm thấy sản phẩm nào phù hợp'}
           </div>
         </div>
       )}
 
       {/* Purchase Confirmation Modal */}
-      {showConfirmModal && selectedProduct && (
+      {showConfirmModal && selectedVariant && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg w-full max-w-md">
             <div className="p-6">
               <h3 className="text-lg font-semibold mb-4">Xác nhận mua hàng</h3>
+              <p className="text-gray-600 mb-2">
+                Sản phẩm: <span className="font-semibold">{selectedProductName}</span>
+              </p>
+              <p className="text-gray-600 mb-2">
+                Gói: <span className="font-semibold">{selectedVariant.name}</span>
+              </p>
               <p className="text-gray-600 mb-4">
-                Bạn có chắc chắn muốn mua "{selectedProduct.name}" với giá{' '}
-                <span className="font-bold text-blue-600">
-                  {selectedProduct.price.toLocaleString('vi-VN')}đ
-                </span>?
+                Giá: <span className="font-bold text-blue-600 text-xl">
+                  {selectedVariant.price.toLocaleString('vi-VN')}đ
+                </span>
               </p>
               <div className="flex space-x-4">
                 <button
                   onClick={confirmPurchase}
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+                  disabled={purchasing}
+                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
-                  Xác nhận mua
+                  {purchasing ? 'Đang xử lý...' : 'Xác nhận mua'}
                 </button>
                 <button
                   onClick={() => {
                     setShowConfirmModal(false)
-                    setSelectedProduct(null)
+                    setSelectedVariant(null)
                   }}
-                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 transition-colors"
+                  disabled={purchasing}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 transition-colors disabled:opacity-50"
                 >
                   Hủy
                 </button>

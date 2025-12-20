@@ -17,13 +17,32 @@ export type User = {
 export type Product = {
   id: string
   name: string
-  price: number
+  mechanism?: string
+  recommended_model?: string
+  strengths?: string
+  weaknesses?: string
+  image_url?: string
   category: string
-  type: 'email' | 'key' | 'package'
-  description: string
-  image_url: string
-  quantity: number
-  duration: string
+  created_at: string
+  variants?: ProductVariant[]
+}
+
+export type ProductVariant = {
+  id: string
+  product_id: string
+  name: string
+  price: number
+  duration_days?: number
+  description?: string
+  stock?: number
+  created_at: string
+}
+
+export type ProductKey = {
+  id: string
+  variant_id: string
+  key_value: string
+  is_used: boolean
   created_at: string
 }
 
@@ -33,6 +52,8 @@ export type Transaction = {
   amount: number
   type: 'top_up' | 'purchase'
   status: 'pending' | 'completed' | 'failed'
+  variant_id?: string
+  key_id?: string
   created_at: string
 }
 
