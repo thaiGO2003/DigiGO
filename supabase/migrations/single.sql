@@ -37,6 +37,20 @@ BEGIN
   ) THEN
     ALTER TABLE users ADD COLUMN full_name text;
   END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'referral_code'
+  ) THEN
+    ALTER TABLE users ADD COLUMN referral_code text UNIQUE;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'referred_by'
+  ) THEN
+    ALTER TABLE users ADD COLUMN referred_by uuid REFERENCES users(id) ON DELETE SET NULL;
+  END IF;
 END $$;
 
 CREATE TABLE IF NOT EXISTS transactions (
@@ -54,6 +68,15 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   admin_id uuid REFERENCES users(id) ON DELETE SET NULL,
   message text NOT NULL,
   is_admin boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS referral_earnings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  referrer_id uuid REFERENCES users(id) ON DELETE CASCADE,
+  referred_user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+  transaction_id uuid REFERENCES transactions(id) ON DELETE CASCADE,
+  amount bigint NOT NULL,
   created_at timestamptz DEFAULT now()
 );
 
@@ -82,6 +105,7 @@ CREATE TABLE product_variants (
   product_id uuid REFERENCES products(id) ON DELETE CASCADE,
   name text NOT NULL,
   price bigint NOT NULL,
+  discount_percent integer DEFAULT 0 CHECK (discount_percent >= 0 AND discount_percent <= 100),
   duration_days integer,
   description text,
   created_at timestamptz DEFAULT now()
@@ -143,6 +167,7 @@ END $$;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referral_earnings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_variants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_keys ENABLE ROW LEVEL SECURITY;
@@ -255,6 +280,13 @@ CREATE POLICY "Admins can manage keys" ON product_keys
     EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.is_admin = true)
   );
 
+-- REFERRAL EARNINGS
+DROP POLICY IF EXISTS "Users can read own referral earnings" ON referral_earnings;
+
+CREATE POLICY "Users can read own referral earnings" ON referral_earnings
+  FOR SELECT TO authenticated
+  USING (referrer_id = auth.uid());
+
 -- =========================
 -- Trigger: auto-create user profile
 -- =========================
@@ -265,12 +297,18 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_referral_code text;
 BEGIN
-  INSERT INTO users (id, email, is_admin)
+  -- Generate unique referral code (8 random hex chars)
+  v_referral_code := upper(substring(md5(random()::text || NEW.id::text) from 1 for 8));
+  
+  INSERT INTO users (id, email, is_admin, referral_code)
   VALUES (
     NEW.id,
     NEW.email,
-    CASE WHEN NEW.email = 'luongquocthai.thaigo.2003@gmail.com' THEN true ELSE false END
+    CASE WHEN NEW.email = 'luongquocthai.thaigo.2003@gmail.com' THEN true ELSE false END,
+    v_referral_code
   )
   ON CONFLICT (email) DO NOTHING;
 
@@ -361,8 +399,10 @@ BEGIN
     RAISE EXCEPTION 'Invalid user';
   END IF;
 
-  -- 1. Get variant price
-  SELECT price INTO v_variant_price
+  -- 1. Get variant price (with discount applied)
+  SELECT 
+    ROUND(price * (100 - COALESCE(discount_percent, 0)) / 100.0)
+  INTO v_variant_price
   FROM product_variants
   WHERE id = p_variant_id;
 
@@ -409,6 +449,44 @@ BEGIN
     'key_value', v_key_value,
     'message', 'Purchase successful'
   );
+END;
+$$;
+
+-- =========================
+-- RPC: set_referrer (called after signup with ref code)
+-- =========================
+
+CREATE OR REPLACE FUNCTION set_referrer(
+  p_user_id uuid,
+  p_referral_code text
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_referrer_id uuid;
+BEGIN
+  -- Find referrer by code
+  SELECT id INTO v_referrer_id
+  FROM users
+  WHERE referral_code = p_referral_code;
+
+  IF v_referrer_id IS NULL THEN
+    RETURN json_build_object('success', false, 'message', 'Invalid referral code');
+  END IF;
+
+  IF v_referrer_id = p_user_id THEN
+    RETURN json_build_object('success', false, 'message', 'Cannot refer yourself');
+  END IF;
+
+  -- Update user's referrer
+  UPDATE users
+  SET referred_by = v_referrer_id
+  WHERE id = p_user_id;
+
+  RETURN json_build_object('success', true, 'message', 'Referrer set successfully');
 END;
 $$;
 

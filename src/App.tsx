@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import Header from './components/Header'
 import ProductsPage from './components/ProductsPage'
 import TopUpPage from './components/TopUpPage'
@@ -6,6 +6,7 @@ import PurchasedPage from './components/PurchasedPage'
 import AboutPage from './components/AboutPage'
 import AdminPage from './components/AdminPage'
 import ProfilePage from './components/ProfilePage'
+import ReferralPage from './components/ReferralPage'
 import ChatWidget from './components/ChatWidget'
 import { useAuth } from './hooks/useAuth'
 
@@ -32,6 +33,8 @@ function App() {
         return <TopUpPage />
       case 'purchased':
         return <PurchasedPage />
+      case 'referral':
+        return <ReferralPage />
       case 'about':
         return <AboutPage />
       case 'admin':

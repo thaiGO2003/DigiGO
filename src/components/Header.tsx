@@ -20,12 +20,13 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
     { key: 'purchased', label: 'Đã Mua' },
     { key: 'products', label: 'Sản phẩm' },
     { key: 'topup', label: 'Nạp tiền' },
-    { key: 'about', label: 'Giới thiệu' },
+    { key: 'referral', label: 'Giới thiệu' },
+    { key: 'about', label: 'Về chúng tôi' },
     ...(isAdmin ? [{ key: 'admin', label: 'Quản lý' }] : []),
   ]
 
   const handleNavigation = (page: string) => {
-    if ((page === 'purchased' || page === 'topup' || page === 'admin') && !user) {
+    if ((page === 'purchased' || page === 'topup' || page === 'referral' || page === 'admin') && !user) {
       setShowAuthModal(true)
       return
     }

@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { X, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -14,8 +15,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [referralCode, setReferralCode] = useState<string | null>(null)
   
   const { signIn, signUp, resetPassword } = useAuth()
+
+  useEffect(() => {
+    // Get referral code from URL query parameter
+    const params = new URLSearchParams(window.location.search)
+    const ref = params.get('ref')
+    if (ref) {
+      setReferralCode(ref)
+      setMode('register') // Auto switch to register mode if ref code present
+    }
+  }, [isOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,8 +40,27 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         if (error) throw error
         onClose()
       } else if (mode === 'register') {
-        const { error } = await signUp(email, password)
+        const { error, data } = await signUp(email, password)
         if (error) throw error
+        
+        // If there's a referral code, set the referrer
+        if (referralCode && data?.user) {
+          try {
+            const { data: refData, error: refError } = await supabase.rpc('set_referrer', {
+              p_user_id: data.user.id,
+              p_referral_code: referralCode
+            })
+            
+            if (refError) {
+              console.error('Error setting referrer:', refError)
+            } else if (refData?.success) {
+              console.log('Referrer set successfully')
+            }
+          } catch (refErr) {
+            console.error('Error in referral setup:', refErr)
+          }
+        }
+        
         setMessage('Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.')
       } else if (mode === 'forgot') {
         const { error } = await resetPassword(email)

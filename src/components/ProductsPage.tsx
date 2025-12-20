@@ -79,7 +79,9 @@ export default function ProductsPage() {
       return
     }
 
-    if (user.balance < variant.price) {
+    const finalPrice = Math.round(variant.price * (100 - (variant.discount_percent || 0)) / 100)
+    
+    if (user.balance < finalPrice) {
       alert('Số dư không đủ. Vui lòng nạp tiền!')
       return
     }
@@ -254,6 +256,11 @@ export default function ProductsPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-gray-900">{variant.name}</span>
+                          {(variant.discount_percent || 0) > 0 && (
+                            <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">
+                              -{variant.discount_percent}%
+                            </span>
+                          )}
                           {(variant.stock || 0) <= 0 && (
                             <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">
                               Hết hàng
@@ -266,10 +273,23 @@ export default function ProductsPage() {
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-lg font-bold text-blue-600">
-                            {variant.price.toLocaleString('vi-VN')}đ
-                          </span>
+                        <div className="flex items-center gap-3 mt-1">
+                          <div className="flex items-center gap-2">
+                            {(variant.discount_percent || 0) > 0 ? (
+                              <>
+                                <span className="text-sm text-gray-400 line-through">
+                                  {variant.price.toLocaleString('vi-VN')}đ
+                                </span>
+                                <span className="text-lg font-bold text-red-600">
+                                  {Math.round(variant.price * (100 - (variant.discount_percent || 0)) / 100).toLocaleString('vi-VN')}đ
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-lg font-bold text-blue-600">
+                                {variant.price.toLocaleString('vi-VN')}đ
+                              </span>
+                            )}
+                          </div>
                           <span className="text-xs text-gray-500 flex items-center gap-1">
                             <Package className="h-3 w-3" />
                             {variant.stock || 0} còn lại
@@ -317,11 +337,21 @@ export default function ProductsPage() {
               <p className="text-gray-600 mb-2">
                 Gói: <span className="font-semibold">{selectedVariant.name}</span>
               </p>
-              <p className="text-gray-600 mb-4">
-                Giá: <span className="font-bold text-blue-600 text-xl">
-                  {selectedVariant.price.toLocaleString('vi-VN')}đ
-                </span>
-              </p>
+              <div className="mb-4">
+                {(selectedVariant.discount_percent || 0) > 0 ? (
+                  <>
+                    <p className="text-gray-600">Giá gốc: <span className="text-gray-400 line-through">{selectedVariant.price.toLocaleString('vi-VN')}đ</span></p>
+                    <p className="text-gray-600">Giảm giá: <span className="text-red-600 font-semibold">-{selectedVariant.discount_percent}%</span></p>
+                    <p className="text-gray-600">Giá sau giảm: <span className="font-bold text-red-600 text-xl">
+                      {Math.round(selectedVariant.price * (100 - (selectedVariant.discount_percent || 0)) / 100).toLocaleString('vi-VN')}đ
+                    </span></p>
+                  </>
+                ) : (
+                  <p className="text-gray-600">Giá: <span className="font-bold text-blue-600 text-xl">
+                    {selectedVariant.price.toLocaleString('vi-VN')}đ
+                  </span></p>
+                )}
+              </div>
               <div className="flex space-x-4">
                 <button
                   onClick={confirmPurchase}

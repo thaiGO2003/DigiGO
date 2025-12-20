@@ -626,6 +626,7 @@ function VariantModal({ isOpen, onClose, product, variant, onSave }: any) {
   const [formData, setFormData] = useState({
     name: '',
     price: 0,
+    discount_percent: 0,
     duration_days: 0,
     description: ''
   })
@@ -635,6 +636,7 @@ function VariantModal({ isOpen, onClose, product, variant, onSave }: any) {
       setFormData({
         name: variant.name || '',
         price: variant.price || 0,
+        discount_percent: variant.discount_percent || 0,
         duration_days: variant.duration_days || 0,
         description: variant.description || ''
       })
@@ -642,6 +644,7 @@ function VariantModal({ isOpen, onClose, product, variant, onSave }: any) {
       setFormData({
         name: '',
         price: 0,
+        discount_percent: 0,
         duration_days: 0,
         description: ''
       })
@@ -690,7 +693,7 @@ function VariantModal({ isOpen, onClose, product, variant, onSave }: any) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Giá (VNĐ)</label>
+              <label className="block text-sm font-medium mb-1">Giá gốc (VNĐ)</label>
               <input
                 type="number"
                 value={formData.price}
@@ -699,6 +702,25 @@ function VariantModal({ isOpen, onClose, product, variant, onSave }: any) {
                 required
                 min="0"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Giảm giá (%)</label>
+              <input
+                type="number"
+                value={formData.discount_percent}
+                onChange={(e) => setFormData({ ...formData, discount_percent: Number(e.target.value) })}
+                className="w-full px-3 py-2 border rounded-md"
+                min="0"
+                max="100"
+                placeholder="VD: 10 = giảm 10%"
+              />
+              {formData.discount_percent > 0 && formData.price > 0 && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Giá sau giảm: <span className="font-semibold text-red-600">
+                    {Math.round(formData.price * (100 - formData.discount_percent) / 100).toLocaleString('vi-VN')}đ
+                  </span>
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Thời hạn (ngày)</label>

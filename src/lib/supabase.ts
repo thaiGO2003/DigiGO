@@ -11,6 +11,17 @@ export type User = {
   full_name?: string
   balance: number
   is_admin: boolean
+  referral_code?: string
+  referred_by?: string
+  created_at: string
+}
+
+export type ReferralEarning = {
+  id: string
+  referrer_id: string
+  referred_user_id: string
+  transaction_id: string
+  amount: number
   created_at: string
 }
 
@@ -32,6 +43,7 @@ export type ProductVariant = {
   product_id: string
   name: string
   price: number
+  discount_percent?: number
   duration_days?: number
   description?: string
   stock?: number
