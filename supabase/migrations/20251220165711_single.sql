@@ -23,35 +23,22 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email text UNIQUE NOT NULL,
+  full_name text,
   balance bigint DEFAULT 0,
   is_admin boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
 
--- Ensure full_name column exists
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'users' AND column_name = 'full_name'
-  ) THEN
-    ALTER TABLE users ADD COLUMN full_name text;
-  END IF;
-  
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'users' AND column_name = 'referral_code'
-  ) THEN
-    ALTER TABLE users ADD COLUMN referral_code text UNIQUE;
-  END IF;
-  
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'users' AND column_name = 'referred_by'
-  ) THEN
-    ALTER TABLE users ADD COLUMN referred_by uuid REFERENCES users(id) ON DELETE SET NULL;
-  END IF;
-END $$;
+ALTER TABLE IF EXISTS users
+  ADD COLUMN IF NOT EXISTS full_name text;
+
+ALTER TABLE IF EXISTS users
+  ADD COLUMN IF NOT EXISTS referral_code text UNIQUE;
+
+ALTER TABLE IF EXISTS users
+  ADD COLUMN IF NOT EXISTS referred_by uuid REFERENCES users(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';
 
 CREATE TABLE IF NOT EXISTS transactions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -390,6 +377,8 @@ DECLARE
   v_user_balance bigint;
   v_key_id uuid;
   v_key_value text;
+  v_transaction_id uuid;
+  v_referrer_id uuid;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Unauthorized';
@@ -454,6 +443,7 @@ BEGIN
     DECLARE
       v_referral_count integer;
       v_commission_percent integer;
+      v_commission bigint;
     BEGIN
       -- Count how many people the referrer has referred
       SELECT COUNT(*) INTO v_referral_count

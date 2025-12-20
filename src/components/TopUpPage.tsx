@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { CreditCard, History } from 'lucide-react'
 import { supabase, Transaction } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -7,7 +7,7 @@ import AuthModal from './AuthModal'
 const PRESET_AMOUNTS = [50000, 100000, 200000, 500000, 1000000, 2000000]
 
 export default function TopUpPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null)
   const [customAmount, setCustomAmount] = useState('')
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -15,16 +15,14 @@ export default function TopUpPage() {
   const [showAuthModal, setShowAuthModal] = useState(false)
 
   useEffect(() => {
-    if (user) {
-      fetchTransactions()
-    }
-  }, [user])
+    if (authLoading || !user) return
+    fetchTransactions()
+  }, [authLoading, user])
 
   useEffect(() => {
-    if (!user) {
-      setShowAuthModal(true)
-    }
-  }, [user])
+    if (authLoading) return
+    setShowAuthModal(!user)
+  }, [authLoading, user])
 
   const fetchTransactions = async () => {
     if (!user) return

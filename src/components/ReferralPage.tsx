@@ -18,26 +18,30 @@ interface ReferredUser {
 }
 
 export default function ReferralPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [stats, setStats] = useState<ReferralStats>({
     totalReferrals: 0,
     monthlyEarnings: 0,
     totalEarnings: 0
   })
   const [referredUsers, setReferredUsers] = useState<ReferredUser[]>([])
-  const [loading, setLoading] = useState(true)
+  const [dataLoading, setDataLoading] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
 
   useEffect(() => {
+    if (authLoading) return
+
     if (user) {
+      setShowAuthModal(false)
+      setDataLoading(true)
       fetchReferralData()
     } else {
       setShowAuthModal(true)
-      setLoading(false)
+      setDataLoading(false)
     }
-  }, [user])
+  }, [authLoading, user])
 
   const fetchReferralData = async () => {
     if (!user) return
@@ -78,7 +82,7 @@ export default function ReferralPage() {
     } catch (error) {
       console.error('Error fetching referral data:', error)
     } finally {
-      setLoading(false)
+      setDataLoading(false)
     }
   }
 
@@ -99,6 +103,14 @@ export default function ReferralPage() {
     })
   }
 
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
   if (!user) {
     return (
       <>
@@ -116,7 +128,7 @@ export default function ReferralPage() {
     )
   }
 
-  if (loading) {
+  if (dataLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
