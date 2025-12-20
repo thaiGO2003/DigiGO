@@ -253,7 +253,11 @@ export default function AdminPage() {
     try {
       const { data, error } = await supabase
         .from('transactions')
-        .select('*, users(email, full_name, balance)')
+        .select(`
+          *,
+          users(email, full_name, balance),
+          product_variants(name, products(name))
+        `)
         .order('created_at', { ascending: false })
       if (error) throw error
       setTransactions(data || [])
@@ -554,7 +558,24 @@ export default function AdminPage() {
       {/* Transactions Tab */}
       {
         activeTab === 'transactions' && (
-          <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Tổng tiền nạp thành công</p>
+                  <p className="text-3xl font-bold text-gray-900 mt-2">
+                    {transactions
+                      .filter((tx: any) => tx.type === 'top_up' && tx.status === 'completed')
+                      .reduce((sum: number, tx: any) => sum + tx.amount, 0)
+                      .toLocaleString('vi-VN')}đ
+                  </p>
+                </div>
+                <div className="p-4 bg-green-50 rounded-full">
+                  <CreditCard className="w-8 h-8 text-green-600" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-white shadow rounded-lg overflow-hidden">
             <table className="min-w-full">
               <thead className="bg-gray-50">
                 <tr>
@@ -577,7 +598,16 @@ export default function AdminPage() {
                       {tx.amount.toLocaleString('vi-VN')}đ
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {tx.type === 'top_up' ? 'Nạp tiền' : 'Mua hàng'}
+                      {tx.type === 'top_up' ? (
+                        'Nạp tiền'
+                      ) : (
+                        <div>
+                          <span className="block">Mua hàng</span>
+                          <span className="text-xs text-gray-400">
+                            {tx.product_variants?.products?.name} - {tx.product_variants?.name}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${tx.status === 'completed' ? 'bg-green-100 text-green-800' :
@@ -616,6 +646,7 @@ export default function AdminPage() {
                 ))}
               </tbody>
             </table>
+          </div>
           </div>
         )
       }

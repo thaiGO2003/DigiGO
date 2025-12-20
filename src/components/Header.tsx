@@ -154,12 +154,24 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
                   </button>
                 ))}
                 {user && (
-                  <div className="px-3 py-2 border-t border-gray-200 mt-2 pt-4">
-                    <span className="text-sm text-gray-600">Số dư: </span>
-                    <span className="font-bold text-blue-600">
-                      {user.balance.toLocaleString('vi-VN')}đ
-                    </span>
-                  </div>
+                  <>
+                    <button
+                      onClick={() => handleNavigation('profile')}
+                      className={`px-3 py-2 rounded-md text-left text-sm font-medium transition-colors duration-200 ${
+                        currentPage === 'profile'
+                          ? 'text-blue-600 bg-blue-50'
+                          : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      Hồ sơ cá nhân
+                    </button>
+                    <div className="px-3 py-2 border-t border-gray-200 mt-2 pt-4">
+                      <span className="text-sm text-gray-600">Số dư: </span>
+                      <span className="font-bold text-blue-600">
+                        {user.balance.toLocaleString('vi-VN')}đ
+                      </span>
+                    </div>
+                  </>
                 )}
               </nav>
             </div>
