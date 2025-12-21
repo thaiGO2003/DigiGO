@@ -11,6 +11,7 @@ export type User = {
   username?: string
   full_name?: string
   balance: number
+  total_deposited?: number
   is_admin: boolean
   is_banned?: boolean
   referral_code?: string

@@ -147,13 +147,13 @@ export function useAuth() {
     }
   }, [fetchUserProfile, session?.user?.id])
 
-  // Refresh profile định kỳ (mỗi 5 giây để check số dư theo yêu cầu)
+  // Refresh profile định kỳ (mỗi 10 giây để check số dư theo yêu cầu)
   useEffect(() => {
     if (!session?.user) return
 
     const interval = setInterval(() => {
       fetchUserProfile(session.user.id)
-    }, 5000)
+    }, 10000)
 
     return () => clearInterval(interval)
   }, [session?.user?.id, fetchUserProfile])

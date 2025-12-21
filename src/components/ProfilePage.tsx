@@ -648,10 +648,10 @@ export default function ProfilePage() {
                             <Percent className="h-6 w-6 opacity-80" />
                           </div>
                           <div className="text-sm opacity-90 mb-1">Tỷ lệ hiện tại</div>
-                          <div className="text-2xl font-bold">{Math.min(referralStats.totalReferrals * 2 || 2, 10)}%</div>
-                          {referralStats.totalReferrals < 5 && (
+                          <div className="text-2xl font-bold">{Math.min(referralStats.totalReferrals * 1, 10)}%</div>
+                          {referralStats.totalReferrals < 10 && (
                             <div className="text-xs opacity-75 mt-1">
-                              Còn {5 - referralStats.totalReferrals} người để tăng %
+                              Còn {10 - referralStats.totalReferrals} người để tăng %
                             </div>
                           )}
                         </div>
@@ -671,7 +671,13 @@ export default function ProfilePage() {
                                 <Award className="h-6 w-6 text-yellow-600" />
                               </div>
                               <div>
-                                <h3 className="font-semibold text-lg capitalize">{user.rank || 'Đồng'}</h3>
+                                <h3 className="font-semibold text-lg capitalize">
+                                  {user.rank === 'bronze' ? 'Đồng' :
+                                   user.rank === 'silver' ? 'Bạc' :
+                                   user.rank === 'gold' ? 'Vàng' :
+                                   user.rank === 'platinum' ? 'Platinum' :
+                                   'Kim cương'}
+                                </h3>
                                 <p className="text-sm text-gray-600">Hạng hiện tại</p>
                               </div>
                             </div>
@@ -688,15 +694,15 @@ export default function ProfilePage() {
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-gray-600">Giảm giá giới thiệu:</span>
-                                <span className="font-medium text-blue-600">5%</span>
+                                <span className="font-medium text-blue-600">{Math.min(referralStats.totalReferrals * 1, 10)}%</span>
                               </div>
                               <div className="flex justify-between pt-2 border-t mt-2">
                                 <span className="text-gray-600 font-medium">Tổng giảm giá tối đa:</span>
                                 <span className="font-bold text-purple-600">
-                                  {user.rank === 'silver' ? '7%' :
-                                    user.rank === 'gold' ? '9%' :
-                                      user.rank === 'platinum' ? '11%' :
-                                        user.rank === 'diamond' ? '13%' : '5%'}
+                                  {Math.min(referralStats.totalReferrals * 1, 10) + (user.rank === 'silver' ? 2 :
+                                    user.rank === 'gold' ? 4 :
+                                      user.rank === 'platinum' ? 6 :
+                                        user.rank === 'diamond' ? 8 : 0)}%
                                 </span>
                               </div>
                             </div>
@@ -706,36 +712,45 @@ export default function ProfilePage() {
                             <h4 className="font-medium mb-3">Cấp độ tiếp theo</h4>
                             <div className="space-y-3">
                               {(() => {
-                                const currentReferrals = referralStats.totalReferrals
-                                let nextRank = ''
-                                let neededReferrals = 0
+                                const currentDeposited = user.total_deposited || 0
+                                let nextMilestone = ''
+                                let neededAmount = 0
+                                let currentProgress = 0
 
-                                if (currentReferrals < 5) {
-                                  nextRank = 'Bạc'
-                                  neededReferrals = 5 - currentReferrals
-                                } else if (currentReferrals < 10) {
-                                  nextRank = 'Vàng'
-                                  neededReferrals = 10 - currentReferrals
-                                } else if (currentReferrals < 20) {
-                                  nextRank = 'Platinum'
-                                  neededReferrals = 20 - currentReferrals
-                                } else if (currentReferrals < 50) {
-                                  nextRank = 'Kim cương'
-                                  neededReferrals = 50 - currentReferrals
+                                if (currentDeposited < 500000) {
+                                  nextMilestone = 'Bạc (500K)'
+                                  neededAmount = 500000 - currentDeposited
+                                  currentProgress = currentDeposited / 500000
+                                } else if (currentDeposited < 1000000) {
+                                  nextMilestone = 'Vàng (1 triệu)'
+                                  neededAmount = 1000000 - currentDeposited
+                                  currentProgress = (currentDeposited - 500000) / 500000
+                                } else if (currentDeposited < 2000000) {
+                                  nextMilestone = 'Platinum (2 triệu)'
+                                  neededAmount = 2000000 - currentDeposited
+                                  currentProgress = (currentDeposited - 1000000) / 1000000
+                                } else if (currentDeposited < 3000000) {
+                                  nextMilestone = 'Kim cương (3 triệu)'
+                                  neededAmount = 3000000 - currentDeposited
+                                  currentProgress = (currentDeposited - 2000000) / 1000000
+                                } else if (currentDeposited < 5000000) {
+                                  nextMilestone = 'Kim cương+ (5 triệu)'
+                                  neededAmount = 5000000 - currentDeposited
+                                  currentProgress = (currentDeposited - 3000000) / 2000000
                                 } else {
-                                  return <p className="text-sm text-gray-600 text-center py-2">Bạn đã đạt hạng cao nhất! Xuất sắc!</p>
+                                  return <p className="text-sm text-gray-600 text-center py-2">Bạn đã đạt hạng cao nhất!</p>
                                 }
 
                                 return (
                                   <div>
                                     <p className="text-sm text-gray-600 mb-2">
-                                      Cần thêm <span className="font-medium text-blue-600">{neededReferrals}</span> người giới thiệu để đạt hạng <span className="font-medium">{nextRank}</span>
+                                      Cần nạp thêm <span className="font-medium text-blue-600">{neededAmount.toLocaleString('vi-VN')}đ</span> để đạt <span className="font-medium">{nextMilestone}</span>
                                     </p>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
                                       <div
                                         className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                                         style={{
-                                          width: `${Math.min((currentReferrals / ((currentReferrals + neededReferrals) || 1)) * 100, 100)}%`
+                                          width: `${Math.min(currentProgress * 100, 100)}%`
                                         }}
                                       ></div>
                                     </div>

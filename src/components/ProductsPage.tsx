@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, RotateCcw, ShoppingCart, Package, AlertTriangle, Plus, Minus, ExternalLink, Copy, Check, Key } from 'lucide-react'
+import { Search, RotateCcw, ShoppingCart, Plus, Minus, ExternalLink, Copy, Check, Key } from 'lucide-react'
 import { supabase, Product, ProductVariant } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { sendTelegramNotification } from '../lib/telegram'
@@ -102,8 +102,12 @@ export default function ProductsPage() {
       (user.rank === 'silver' ? 2 : 
        user.rank === 'gold' ? 4 : 
        user.rank === 'platinum' ? 6 : 
-       user.rank === 'diamond' ? 8 : 0) : 0
-    const totalDiscount = Math.min(variantDiscount + rankDiscount, 100)
+       user.rank === 'diamond' ? 10 : 0) : 0
+    
+    // Tính giảm giá từ referral (1% cho mỗi người giới thiệu, tối đa 10%)
+    const referralDiscount = user?.referral_count ? Math.min(user.referral_count * 1, 10) : 0
+    
+    const totalDiscount = Math.min(variantDiscount + rankDiscount + referralDiscount, 20)
     return Math.round(price * (100 - totalDiscount) / 100)
   }
 
@@ -362,7 +366,7 @@ export default function ProductsPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Đơn giá:</span>
                       <div className="text-right">
-                        {(selectedVariant.discount_percent || 0) > 0 || (user?.rank && user.rank !== 'bronze') ? (
+                        {(selectedVariant.discount_percent || 0) > 0 || (user?.rank && user.rank !== 'bronze') || (user?.referral_count && user.referral_count > 0) ? (
                           <div className="flex items-center gap-2">
                             <span className="text-gray-400 line-through text-sm">
                               {selectedVariant.price.toLocaleString('vi-VN')}đ
@@ -376,7 +380,12 @@ export default function ProductsPage() {
                               <span className="bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded text-xs font-medium">
                                 -{user.rank === 'silver' ? 2 : 
                                    user.rank === 'gold' ? 4 : 
-                                   user.rank === 'platinum' ? 6 : 8}%
+                                   user.rank === 'platinum' ? 6 : 10}%
+                              </span>
+                            )}
+                            {user?.referral_count && user.referral_count > 0 && (
+                              <span className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded text-xs font-medium">
+                                -{Math.min(user.referral_count * 1, 10)}%
                               </span>
                             )}
                             <span className="font-bold text-blue-600">
@@ -410,6 +419,11 @@ export default function ProductsPage() {
                         </span>
                       </div>
                     )}
+
+                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                      <span className="text-gray-500 text-sm">Giới hạn giảm giá:</span>
+                      <span className="text-sm font-medium text-gray-600">Tối đa 20%</span>
+                    </div>
                   </div>
 
                   {/* Action Buttons */}
