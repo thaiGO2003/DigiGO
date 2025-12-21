@@ -24,35 +24,35 @@ export default function RanksTab({ users, onUpdateRank }: RanksTabProps) {
                         <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
                             <div>
                                 <span className="font-medium text-orange-600">Đồng</span>
-                                <p className="text-sm text-gray-500">Giảm giá: 0%</p>
+                                <p className="text-sm text-gray-500">Giảm giá: 2%</p>
                             </div>
                             <span className="text-sm text-gray-500">500K - 1 triệu</span>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-gray-100 rounded-lg">
                             <div>
                                 <span className="font-medium text-gray-600">Bạc</span>
-                                <p className="text-sm text-gray-500">Giảm giá: 2%</p>
+                                <p className="text-sm text-gray-500">Giảm giá: 4%</p>
                             </div>
                             <span className="text-sm text-gray-500">1 - 2 triệu</span>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
                             <div>
                                 <span className="font-medium text-yellow-600">Vàng</span>
-                                <p className="text-sm text-gray-500">Giảm giá: 4%</p>
+                                <p className="text-sm text-gray-500">Giảm giá: 6%</p>
                             </div>
                             <span className="text-sm text-gray-500">2 - 3 triệu</span>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                             <div>
                                 <span className="font-medium text-blue-600">Platinum</span>
-                                <p className="text-sm text-gray-500">Giảm giá: 6%</p>
+                                <p className="text-sm text-gray-500">Giảm giá: 8%</p>
                             </div>
                             <span className="text-sm text-gray-500">3 - 5 triệu</span>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
                             <div>
                                 <span className="font-medium text-purple-600">Kim cương</span>
-                                <p className="text-sm text-gray-500">Giảm giá: 8%</p>
+                                <p className="text-sm text-gray-500">Giảm giá: 10%</p>
                             </div>
                             <span className="text-sm text-gray-500">Trên 5 triệu</span>
                         </div>
@@ -71,14 +71,14 @@ export default function RanksTab({ users, onUpdateRank }: RanksTabProps) {
                             <p className="text-xs text-blue-600 mt-1">Mỗi người giới thiệu sẽ nhận 1% hoa hồng từ giao dịch của họ</p>
                         </div>
                         <div className="p-3 bg-green-50 rounded-lg">
-                            <p className="text-sm text-green-700 font-medium">Giảm giá người được giới thiệu: 5%</p>
-                            <p className="text-xs text-green-600 mt-1">Người được giới thiệu sẽ được giảm 5% khi mua hàng</p>
+                            <p className="text-sm text-green-700 font-medium">Giảm giá người được giới thiệu: 1%</p>
+                            <p className="text-xs text-green-600 mt-1">Người được giới thiệu sẽ được giảm 1% khi mua hàng</p>
                         </div>
                         <div className="text-sm text-gray-600">
                             <p className="font-medium mb-2">Lưu ý:</p>
                             <ul className="space-y-1 text-xs">
                                 <li>• Hoa hồng tối đa: 10%</li>
-                                <li>• Giảm giá hạng tối đa: 8%</li>
+                                <li>• Giảm giá hạng tối đa: 10%</li>
                                 <li>• Các loại giảm giá được cộng dồn</li>
                             </ul>
                         </div>
@@ -108,10 +108,11 @@ export default function RanksTab({ users, onUpdateRank }: RanksTabProps) {
                             {users.map((user) => {
                                 const referralCount = user.referral_count || 0
                                 const currentRank = user.rank || 'newbie'
-                                const rankDiscount = currentRank === 'silver' ? 2 :
-                                    currentRank === 'gold' ? 4 :
-                                        currentRank === 'platinum' ? 6 :
-                                            currentRank === 'diamond' ? 8 : 0
+                                const rankDiscount = currentRank === 'bronze' ? 2 :
+                                    currentRank === 'silver' ? 4 :
+                                        currentRank === 'gold' ? 6 :
+                                            currentRank === 'platinum' ? 8 :
+                                                currentRank === 'diamond' ? 10 : 0
 
                                 return (
                                     <tr key={user.id}>

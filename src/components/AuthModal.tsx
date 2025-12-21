@@ -62,10 +62,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           throw new Error('Tên đăng nhập không hợp lệ (3-50 ký tự, chỉ chữ, số và gạch dưới)')
         }
 
-        const { error } = await signUp(email, password, username, fullName, captchaToken || undefined, referralCode.trim())
+        const { data, error } = await signUp(email, password, username, fullName, captchaToken || undefined, referralCode.trim())
         if (error) throw error
 
-        setMessage('Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.')
+        if (data?.session) {
+          setMessage('Đăng ký thành công! Đang đăng nhập...')
+          setTimeout(() => onClose(), 1500)
+        } else {
+          setMessage('Đăng ký thành công! Bây giờ bạn có thể đăng nhập.')
+          setMode('login')
+        }
       } else if (mode === 'forgot') {
         const { error } = await resetPassword(email)
         if (error) throw error
@@ -231,6 +237,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           {mode !== 'forgot' && import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY && (
             <div className="flex justify-center my-4">
               <Turnstile
+                key={`turnstile-${mode}`}
                 sitekey={import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY}
                 onVerify={(token) => setCaptchaToken(token)}
                 onExpire={() => setCaptchaToken(null)}

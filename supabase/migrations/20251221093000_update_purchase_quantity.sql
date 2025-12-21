@@ -25,6 +25,7 @@ DECLARE
   v_final_unit_price bigint;
   v_total_price bigint;
   v_current_key record;
+  v_current_tx_id uuid;
   i integer;
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -108,6 +109,7 @@ BEGIN
 
   -- 6. Mark keys as used and create transactions for each
   v_transaction_ids := ARRAY[]::uuid[];
+  v_key_values := ARRAY[]::text[]; -- Khởi tạo thêm mảng này nếu chưa có an toàn
   
   FOR i IN 1..p_quantity LOOP
     -- Mark key as used
@@ -132,7 +134,8 @@ BEGIN
         'guide_url', COALESCE(v_variant_info.variant_guide_url, v_variant_info.product_guide_url)
       )
     )
-    RETURNING id INTO v_transaction_ids[i];
+    RETURNING id INTO v_current_tx_id;
+    v_transaction_ids := array_append(v_transaction_ids, v_current_tx_id);
   END LOOP;
 
   -- 7. Calculate and add commission for referrer (based on total)

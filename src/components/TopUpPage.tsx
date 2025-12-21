@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { CreditCard, History, Copy, CheckCircle, Download, Timer, AlertCircle, RefreshCw, Globe } from 'lucide-react'
 import { supabase, Transaction, BankConfig } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -22,6 +22,8 @@ export default function TopUpPage() {
   const [activeBankConfig, setActiveBankConfig] = useState<BankConfig | null>(null)
   const [activeTransaction, setActiveTransaction] = useState<Transaction | null>(null)
   const [currentTime, setCurrentTime] = useState(Date.now())
+
+  const lastProcessedTxId = useRef<string | null>(null)
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000)
@@ -74,12 +76,17 @@ export default function TopUpPage() {
           (payload) => {
             console.log('Transaction change detected:', payload)
             fetchTransactions() // Refresh list on any change
-            
+
             // If the active transaction was completed, close the QR display
-            if (activeTransaction && 
-                payload.new && 
-                (payload.new as any).id === activeTransaction.id && 
-                (payload.new as any).status === 'completed') {
+            if (activeTransaction &&
+              payload.new &&
+              (payload.new as any).id === activeTransaction.id &&
+              (payload.new as any).status === 'completed') {
+
+              // Dedup alerts
+              if (lastProcessedTxId.current === activeTransaction.id) return
+              lastProcessedTxId.current = activeTransaction.id
+
               setQrUrl(null)
               setActiveTransaction(null)
               setPendingAmount(null)
@@ -113,9 +120,9 @@ export default function TopUpPage() {
         .select('*')
         .eq('is_active', true)
         .single()
-      
+
       if (error && error.code !== 'PGRST116') throw error
-      
+
       if (data) {
         setActiveBankConfig(data)
       }
@@ -144,7 +151,7 @@ export default function TopUpPage() {
 
   const resumeTransaction = (transaction: Transaction) => {
     if (transaction.status !== 'pending' || isExpired(transaction.created_at)) return
-    
+
     setQrUrl(transaction.metadata.qr_url)
     setPendingAmount(transaction.amount)
     setTransferContent(transaction.metadata.transfer_content)
@@ -162,13 +169,13 @@ export default function TopUpPage() {
         .eq('id', transactionId)
 
       if (error) throw error
-      
+
       if (activeTransaction?.id === transactionId) {
         setQrUrl(null)
         setActiveTransaction(null)
         setPendingAmount(null)
       }
-      
+
       fetchTransactions()
     } catch (error) {
       console.error('Error canceling transaction:', error)
@@ -200,7 +207,7 @@ export default function TopUpPage() {
       // Example: DH1111111111
       const uniqueSuffix = Math.floor(10000000 + Math.random() * 9000000000).toString()
       const content = `DH${uniqueSuffix}`
-      
+
       // Use SePay Service to create payment with active bank config
       const sepayPayment = await sepayService.createPayment(amount, content, activeBankConfig ? {
         bank_id: activeBankConfig.bank_id,
@@ -208,7 +215,7 @@ export default function TopUpPage() {
         account_number: activeBankConfig.account_number,
         account_name: activeBankConfig.account_name
       } : undefined)
-      
+
       if (!sepayPayment.success) {
         throw new Error('Không thể tạo thông tin thanh toán SePay')
       }
@@ -242,7 +249,7 @@ export default function TopUpPage() {
       setQrUrl(qrCodeUrl)
       setPendingAmount(amount)
       setActiveTransaction(transaction)
-      
+
       fetchTransactions()
     } catch (error) {
       console.error('Error topping up:', error)
@@ -486,20 +493,20 @@ export default function TopUpPage() {
 
                   <div className="space-y-4">
                     {[
-                      { 
-                        label: 'Ngân hàng', 
-                        value: activeTransaction?.metadata?.bank_info?.bank_name || 'TPBank', 
-                        key: 'bank' 
+                      {
+                        label: 'Ngân hàng',
+                        value: activeTransaction?.metadata?.bank_info?.bank_name || 'TPBank',
+                        key: 'bank'
                       },
-                      { 
-                        label: 'Số tài khoản', 
-                        value: activeTransaction?.metadata?.bank_info?.account_number || '60394352614', 
-                        key: 'account' 
+                      {
+                        label: 'Số tài khoản',
+                        value: activeTransaction?.metadata?.bank_info?.account_number || '60394352614',
+                        key: 'account'
                       },
-                      { 
-                        label: 'Chủ tài khoản', 
-                        value: activeTransaction?.metadata?.bank_info?.account_holder || 'LUONG QUOC THAI', 
-                        key: 'name' 
+                      {
+                        label: 'Chủ tài khoản',
+                        value: activeTransaction?.metadata?.bank_info?.account_holder || 'LUONG QUOC THAI',
+                        key: 'name'
                       },
                       { label: 'Nội dung chuyển khoản', value: transferContent, key: 'content', highlight: true },
                     ].map((item) => (
@@ -558,8 +565,8 @@ export default function TopUpPage() {
                     {transactions.map((transaction) => {
                       const canResume = transaction.status === 'pending' && !isExpired(transaction.created_at)
                       return (
-                        <div 
-                          key={transaction.id} 
+                        <div
+                          key={transaction.id}
                           className={`p-4 transition-colors relative group/item ${canResume ? 'hover:bg-blue-50 cursor-pointer border-l-4 border-l-transparent hover:border-l-blue-500' : 'hover:bg-gray-50'}`}
                           onClick={() => canResume && resumeTransaction(transaction)}
                         >

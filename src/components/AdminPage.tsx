@@ -88,7 +88,7 @@ export default function AdminPage() {
       const interval = setInterval(() => {
         fetchChatUsers()
         if (selectedUser) fetchMessages(selectedUser.id)
-      }, 10000)
+      }, 1000)
       return () => clearInterval(interval)
     }
   }, [activeTab, selectedUser])
@@ -308,8 +308,8 @@ export default function AdminPage() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as AdminTabType)}
               className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
             >
               <tab.icon className="h-4 w-4" />

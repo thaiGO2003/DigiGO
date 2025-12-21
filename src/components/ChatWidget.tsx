@@ -17,9 +17,20 @@ export default function ChatWidget() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
+    let cleanupSubscription: (() => void) | undefined
+    let interval: NodeJS.Timeout | undefined
+
     if (user && isOpen) {
       fetchMessages()
-      subscribeToMessages()
+      cleanupSubscription = subscribeToMessages()
+
+      // Polling every 1s as requested
+      interval = setInterval(fetchMessages, 1000)
+    }
+
+    return () => {
+      if (cleanupSubscription) cleanupSubscription()
+      if (interval) clearInterval(interval)
     }
   }, [user, isOpen])
 
@@ -65,7 +76,7 @@ export default function ChatWidget() {
         (payload) => {
           const newMsg = payload.new as ChatMessage
           setMessages(prev => [...prev, newMsg])
-          
+
           // If message from admin and chat is closed, play sound and increase unread
           if (newMsg.is_admin && !isOpen) {
             setUnreadCount(prev => prev + 1)
@@ -100,7 +111,7 @@ export default function ChatWidget() {
         })
 
       if (error) throw error
-      
+
       // Send Telegram notification if user is not admin
       if (!user.is_admin) {
         const userIdentifier = user.username || user.full_name || user.email
@@ -171,16 +182,14 @@ export default function ChatWidget() {
                     className={`flex ${message.is_admin ? 'justify-start' : 'justify-end'}`}
                   >
                     <div
-                      className={`max-w-xs px-3 py-2 rounded-lg ${
-                        message.is_admin
+                      className={`max-w-xs px-3 py-2 rounded-lg ${message.is_admin
                           ? 'bg-gray-100 text-gray-900'
                           : 'bg-blue-600 text-white'
-                      }`}
+                        }`}
                     >
                       <p className="text-sm">{message.message}</p>
-                      <p className={`text-xs mt-1 ${
-                        message.is_admin ? 'text-gray-500' : 'text-blue-100'
-                      }`}>
+                      <p className={`text-xs mt-1 ${message.is_admin ? 'text-gray-500' : 'text-blue-100'
+                        }`}>
                         {new Date(message.created_at).toLocaleTimeString('vi-VN', {
                           hour: '2-digit',
                           minute: '2-digit'
@@ -223,9 +232,9 @@ export default function ChatWidget() {
         </div>
       )}
 
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)} 
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
       />
     </>
   )

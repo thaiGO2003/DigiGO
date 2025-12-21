@@ -98,15 +98,16 @@ export default function ProductsPage() {
   }
 
   const calculatePriceWithRank = (price: number, variantDiscount: number = 0) => {
-    const rankDiscount = user?.rank ? 
-      (user.rank === 'silver' ? 2 : 
-       user.rank === 'gold' ? 4 : 
-       user.rank === 'platinum' ? 6 : 
-       user.rank === 'diamond' ? 10 : 0) : 0
-    
+    const rankDiscount = user?.rank ?
+      (user.rank === 'bronze' ? 2 :
+        user.rank === 'silver' ? 4 :
+          user.rank === 'gold' ? 6 :
+            user.rank === 'platinum' ? 8 :
+              user.rank === 'diamond' ? 10 : 0) : 0
+
     // Tính giảm giá từ referral (1% cho mỗi người giới thiệu, tối đa 10%)
     const referralDiscount = user?.referral_count ? Math.min(user.referral_count * 1, 10) : 0
-    
+
     const totalDiscount = Math.min(variantDiscount + rankDiscount + referralDiscount, 20)
     return Math.round(price * (100 - totalDiscount) / 100)
   }
@@ -361,12 +362,18 @@ export default function ProductsPage() {
                     </div>
                   </div>
 
+                  {/* Discount Limit Info */}
+                  <div className="bg-blue-50 text-blue-800 px-4 py-2 rounded-lg mb-4 text-sm flex justify-between items-center">
+                    <span>Giới hạn giảm giá:</span>
+                    <span className="font-semibold">Tối đa 20%</span>
+                  </div>
+
                   {/* Pricing */}
                   <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-4 mb-6 space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Đơn giá:</span>
                       <div className="text-right">
-                        {(selectedVariant.discount_percent || 0) > 0 || (user?.rank && user.rank !== 'bronze') || (user?.referral_count && user.referral_count > 0) ? (
+                        {(selectedVariant.discount_percent || 0) > 0 || (user?.rank && user.rank !== 'newbie') || (user?.referral_count && user.referral_count > 0) ? (
                           <div className="flex items-center gap-2">
                             <span className="text-gray-400 line-through text-sm">
                               {selectedVariant.price.toLocaleString('vi-VN')}đ
@@ -376,11 +383,12 @@ export default function ProductsPage() {
                                 -{selectedVariant.discount_percent}%
                               </span>
                             )}
-                            {user?.rank && user.rank !== 'bronze' && (
+                            {user?.rank && user.rank !== 'newbie' && (
                               <span className="bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded text-xs font-medium">
-                                -{user.rank === 'silver' ? 2 : 
-                                   user.rank === 'gold' ? 4 : 
-                                   user.rank === 'platinum' ? 6 : 10}%
+                                -{user.rank === 'bronze' ? 2 :
+                                  user.rank === 'silver' ? 4 :
+                                    user.rank === 'gold' ? 6 :
+                                      user.rank === 'platinum' ? 8 : 10}%
                               </span>
                             )}
                             {user?.referral_count && user.referral_count > 0 && (
@@ -419,12 +427,15 @@ export default function ProductsPage() {
                         </span>
                       </div>
                     )}
-
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                      <span className="text-gray-500 text-sm">Giới hạn giảm giá:</span>
-                      <span className="text-sm font-medium text-gray-600">Tối đa 20%</span>
-                    </div>
                   </div>
+
+                  {/* Manual Delivery Warning */}
+                  {selectedVariant.is_manual_delivery && (
+                    <div className="bg-orange-50 text-orange-800 p-3 rounded-lg mb-6 text-sm border border-orange-200">
+                      <p className="font-semibold mb-1">⚠️ Lưu ý quan trọng:</p>
+                      Sản phẩm này sẽ trả về <span className="font-bold">Mã đơn hàng</span>. Bạn vui lòng gửi mã này cho hỗ trợ khách hàng để nhận key sản phẩm.
+                    </div>
+                  )}
 
                   {/* Action Buttons */}
                   <div className="flex space-x-4">
@@ -500,6 +511,14 @@ export default function ProductsPage() {
 
                   {/* Keys List */}
                   <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    {/* Manual Delivery Instruction */}
+                    {selectedVariant?.is_manual_delivery && (
+                      <div className="bg-orange-50 text-orange-800 p-3 rounded-lg mb-4 text-sm border border-orange-200">
+                        <p className="font-bold mb-1">👉 Hướng dẫn nhận hàng:</p>
+                        Hãy gửi mã đơn hàng bên dưới cho CSKH (Chat Support ở góc màn hình) để nhận key sản phẩm bạn nhé!
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-2 mb-3">
                       <Key className="h-4 w-4 text-purple-600" />
                       <span className="font-semibold text-gray-900">

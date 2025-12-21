@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import {
   User, Users, Calendar, CreditCard,
   ShoppingBag, History, Copy, Check, Package, Key,
-  AlertCircle, Loader2, ExternalLink, Gift, Percent, DollarSign, Award, CheckCircle
+  AlertCircle, Loader2, ExternalLink, Gift, Percent, Award, CheckCircle
 } from 'lucide-react'
 import AuthModal from './AuthModal'
 
@@ -618,7 +618,7 @@ export default function ProfilePage() {
                   ) : (
                     <div className="space-y-6">
                       {/* Stats Cards */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-sm p-4 text-white">
                           <div className="flex items-center justify-between mb-2">
                             <Users className="h-6 w-6 opacity-80" />
@@ -627,21 +627,7 @@ export default function ProfilePage() {
                           <div className="text-2xl font-bold">{referralStats.totalReferrals}</div>
                         </div>
 
-                        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-sm p-4 text-white">
-                          <div className="flex items-center justify-between mb-2">
-                            <Calendar className="h-6 w-6 opacity-80" />
-                          </div>
-                          <div className="text-sm opacity-90 mb-1">Tháng này</div>
-                          <div className="text-2xl font-bold">{referralStats.monthlyEarnings.toLocaleString('vi-VN')}đ</div>
-                        </div>
 
-                        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-sm p-4 text-white">
-                          <div className="flex items-center justify-between mb-2">
-                            <DollarSign className="h-6 w-6 opacity-80" />
-                          </div>
-                          <div className="text-sm opacity-90 mb-1">Tổng hoa hồng</div>
-                          <div className="text-2xl font-bold">{referralStats.totalEarnings.toLocaleString('vi-VN')}đ</div>
-                        </div>
 
                         <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-sm p-4 text-white">
                           <div className="flex items-center justify-between mb-2">
@@ -673,10 +659,10 @@ export default function ProfilePage() {
                               <div>
                                 <h3 className="font-semibold text-lg capitalize">
                                   {user.rank === 'bronze' ? 'Đồng' :
-                                   user.rank === 'silver' ? 'Bạc' :
-                                   user.rank === 'gold' ? 'Vàng' :
-                                   user.rank === 'platinum' ? 'Platinum' :
-                                   'Kim cương'}
+                                    user.rank === 'silver' ? 'Bạc' :
+                                      user.rank === 'gold' ? 'Vàng' :
+                                        user.rank === 'platinum' ? 'Platinum' :
+                                          user.rank === 'diamond' ? 'Kim cương' : 'Tân binh'}
                                 </h3>
                                 <p className="text-sm text-gray-600">Hạng hiện tại</p>
                               </div>
@@ -686,10 +672,11 @@ export default function ProfilePage() {
                               <div className="flex justify-between">
                                 <span className="text-gray-600">Giảm giá hạng:</span>
                                 <span className="font-medium text-green-600">
-                                  {user.rank === 'silver' ? '2%' :
-                                    user.rank === 'gold' ? '4%' :
-                                      user.rank === 'platinum' ? '6%' :
-                                        user.rank === 'diamond' ? '8%' : '0%'}
+                                  {user.rank === 'bronze' ? '2%' :
+                                    user.rank === 'silver' ? '4%' :
+                                      user.rank === 'gold' ? '6%' :
+                                        user.rank === 'platinum' ? '8%' :
+                                          user.rank === 'diamond' ? '10%' : '0%'}
                                 </span>
                               </div>
                               <div className="flex justify-between">
@@ -699,10 +686,12 @@ export default function ProfilePage() {
                               <div className="flex justify-between pt-2 border-t mt-2">
                                 <span className="text-gray-600 font-medium">Tổng giảm giá tối đa:</span>
                                 <span className="font-bold text-purple-600">
-                                  {Math.min(referralStats.totalReferrals * 1, 10) + (user.rank === 'silver' ? 2 :
-                                    user.rank === 'gold' ? 4 :
-                                      user.rank === 'platinum' ? 6 :
-                                        user.rank === 'diamond' ? 8 : 0)}%
+                                  {Math.min(referralStats.totalReferrals * 1, 10) + (
+                                    user.rank === 'bronze' ? 2 :
+                                      user.rank === 'silver' ? 4 :
+                                        user.rank === 'gold' ? 6 :
+                                          user.rank === 'platinum' ? 8 :
+                                            user.rank === 'diamond' ? 10 : 0)}%
                                 </span>
                               </div>
                             </div>
@@ -717,24 +706,29 @@ export default function ProfilePage() {
                                 let neededAmount = 0
                                 let currentProgress = 0
 
+                                // Nếu đã là Kim Cương thì thôi không tính tiếp
+                                if (user.rank === 'diamond') {
+                                  return <p className="text-sm text-gray-600 text-center py-2">Bạn đã đạt hạng cao nhất (Kim Cương)!</p>
+                                }
+
                                 if (currentDeposited < 500000) {
-                                  nextMilestone = 'Bạc (500K)'
+                                  nextMilestone = 'Đồng (500K)'
                                   neededAmount = 500000 - currentDeposited
                                   currentProgress = currentDeposited / 500000
                                 } else if (currentDeposited < 1000000) {
-                                  nextMilestone = 'Vàng (1 triệu)'
+                                  nextMilestone = 'Bạc (1 triệu)'
                                   neededAmount = 1000000 - currentDeposited
                                   currentProgress = (currentDeposited - 500000) / 500000
                                 } else if (currentDeposited < 2000000) {
-                                  nextMilestone = 'Platinum (2 triệu)'
+                                  nextMilestone = 'Vàng (2 triệu)'
                                   neededAmount = 2000000 - currentDeposited
                                   currentProgress = (currentDeposited - 1000000) / 1000000
                                 } else if (currentDeposited < 3000000) {
-                                  nextMilestone = 'Kim cương (3 triệu)'
+                                  nextMilestone = 'Platinum (3 triệu)'
                                   neededAmount = 3000000 - currentDeposited
                                   currentProgress = (currentDeposited - 2000000) / 1000000
                                 } else if (currentDeposited < 5000000) {
-                                  nextMilestone = 'Kim cương+ (5 triệu)'
+                                  nextMilestone = 'Kim cương (5 triệu)'
                                   neededAmount = 5000000 - currentDeposited
                                   currentProgress = (currentDeposited - 3000000) / 2000000
                                 } else {
@@ -834,8 +828,8 @@ export default function ProfilePage() {
                           </h3>
                           <ul className="text-sm text-yellow-700 space-y-1 ml-6 list-disc">
                             <li>Chia sẻ link giới thiệu cho bạn bè</li>
-                            <li>Nhận hoa hồng trọn đời từ mỗi giao dịch của họ</li>
-                            <li>Hoa hồng tự động cộng vào số dư tài khoản</li>
+                            <li>Tăng 1% giảm giá trọn đời với mỗi người giới thiệu thành công</li>
+                            <li>Người được giới thiệu nhận ngay ưu đãi 1%</li>
                           </ul>
                         </div>
                       </div>

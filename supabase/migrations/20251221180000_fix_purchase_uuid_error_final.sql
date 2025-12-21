@@ -1,54 +1,7 @@
--- 1. Thêm cột manual_stock cho product_variants
-ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS manual_stock INTEGER DEFAULT 0;
+-- Fix triệt để lỗi "cannot subscript type uuid" trong hàm purchase_product
+-- Nguyên nhân: Do cố gắng gán giá trị vào mảng bằng index (arr[i]) khi mảng chưa được khởi tạo đủ kích thước
+-- Giải pháp: Sử dụng array_append để thêm phần tử vào mảng
 
--- 2. Cập nhật hàm get_products_with_variants để trả về stock đúng logic
-CREATE OR REPLACE FUNCTION get_products_with_variants()
-RETURNS json
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT json_agg(
-    json_build_object(
-      'id', p.id,
-      'name', p.name,
-      'mechanism', p.mechanism,
-      'recommended_model', p.recommended_model,
-      'strengths', p.strengths,
-      'weaknesses', p.weaknesses,
-      'image_url', p.image_url,
-      'category', p.category,
-      'guide_url', p.guide_url,
-      'created_at', p.created_at,
-      'variants', (
-        SELECT json_agg(
-          json_build_object(
-            'id', pv.id,
-            'name', pv.name,
-            'price', pv.price,
-            'discount_percent', pv.discount_percent,
-            'duration_days', pv.duration_days,
-            'description', pv.description,
-            'guide_url', pv.guide_url,
-            'is_manual_delivery', pv.is_manual_delivery,
-            'manual_stock', pv.manual_stock,
-            'stock', (
-              CASE 
-                WHEN pv.is_manual_delivery THEN COALESCE(pv.manual_stock, 0)
-                ELSE (SELECT count(*)::int FROM product_keys pk WHERE pk.variant_id = pv.id AND pk.is_used = false)
-              END
-            )
-          ) ORDER BY pv.price
-        )
-        FROM product_variants pv
-        WHERE pv.product_id = p.id
-      )
-    ) ORDER BY p.created_at DESC
-  )
-  FROM products p;
-$$;
-
--- 3. Cập nhật hàm purchase_product để check và trừ manual_stock
 CREATE OR REPLACE FUNCTION purchase_product(
   p_variant_id uuid,
   p_user_id uuid,
@@ -138,7 +91,7 @@ BEGIN
     RAISE EXCEPTION 'Insufficient balance. Need: % VND, have: % VND', v_total_price, v_user_balance;
   END IF;
 
-  -- Init IDs arrays
+  -- Init IDs arrays (Quan trọng: Phải khởi tạo mảng rỗng trước khi append)
   v_transaction_ids := ARRAY[]::uuid[];
   v_key_values := ARRAY[]::text[];
   v_key_ids := ARRAY[]::uuid[];
@@ -172,6 +125,8 @@ BEGIN
         )
       )
       RETURNING id INTO v_current_tx_id;
+      
+      -- Append ID vào mảng thay vì gán index
       v_transaction_ids := array_append(v_transaction_ids, v_current_tx_id);
       
       -- Set key value hiển thị cho user
@@ -199,11 +154,14 @@ BEGIN
       RAISE EXCEPTION 'Not enough stock. Requested: %, available: %', p_quantity, COALESCE(array_length(v_key_ids, 1), 0);
     END IF;
 
+    -- Reset transaction_ids cho nhánh này
+    v_transaction_ids := ARRAY[]::uuid[];
+
     -- Loop tạo transaction và mark used
     FOR i IN 1..p_quantity LOOP
         UPDATE product_keys
         SET is_used = true
-        WHERE id = v_key_ids[i];
+        WHERE id = v_key_ids[i]; -- v_key_ids đã có đủ phần tử từ query trên nên truy cập index OK
 
         INSERT INTO transactions (user_id, amount, type, status, variant_id, key_id, metadata)
         VALUES (
@@ -222,6 +180,8 @@ BEGIN
           )
         )
         RETURNING id INTO v_current_tx_id;
+        
+        -- Append ID vào mảng
         v_transaction_ids := array_append(v_transaction_ids, v_current_tx_id);
     END LOOP;
   END IF;
@@ -254,7 +214,7 @@ BEGIN
         SET balance = balance + v_commission
         WHERE id = v_referrer_id;
         
-        -- Ghi nhận hoa hồng
+        -- Ghi nhận hoa hồng (Lấy ID giao dịch đầu tiên)
         INSERT INTO referral_earnings (referrer_id, referred_user_id, transaction_id, amount)
         VALUES (v_referrer_id, p_user_id, v_transaction_ids[1], v_commission);
       END IF;
@@ -272,3 +232,5 @@ BEGIN
   );
 END;
 $$;
+
+NOTIFY pgrst, 'reload schema';
