@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ShoppingCart, User, LogOut, Menu, X } from 'lucide-react'
+import { User, LogOut, Menu, X } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import AuthModal from './AuthModal'
@@ -58,7 +58,11 @@ export default function Header() {
               className="flex items-center cursor-pointer"
               onClick={() => navigate('/products')}
             >
-              <ShoppingCart className="h-8 w-8 text-blue-600 mr-2" />
+              <img
+                src="/logo.png"
+                alt="DigiGO"
+                className="h-8 w-8 rounded-full object-cover mr-2"
+              />
               <span className="text-xl font-bold text-gray-900">DigiGO</span>
             </div>
 

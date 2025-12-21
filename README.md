@@ -17,18 +17,32 @@ Hệ thống thương mại điện tử DigiGO (trước đây là HOCAI Store)
   - Yêu cầu đăng nhập để mua.
   - Trừ tiền trực tiếp vào số dư tài khoản.
   - Tự động cập nhật số lượng tồn kho sau khi mua.
+  - Giá được tính theo hệ thống giảm giá (rank + giới thiệu), tối đa 20%.
 - **Tài khoản**:
   - Đăng ký / Đăng nhập.
   - Xem thông tin cá nhân và số dư.
   - Cập nhật thông tin cá nhân (Họ tên).
   - Xem lịch sử mua hàng.
+- **Hệ thống Rank theo số tiền nạp**:
+  - **Đồng**: 0 - 500K (không giảm giá)
+  - **Bạc**: 500K - 1 triệu (giảm giá 2%)
+  - **Vàng**: 1 - 2 triệu (giảm giá 4%)
+  - **Platinum**: 2 - 3 triệu (giảm giá 6%)
+  - **Kim cương**: 3 - 5 triệu (giảm giá 10%)
+  - **Kim cương+**: Trên 5 triệu (giảm giá 10%)
+- **Hệ thống giảm giá giới thiệu**:
+  - Giảm 1% cho mỗi người giới thiệu (tối đa 10%)
+  - Cả người giới thiệu và người được giới thiệu đều được giảm 1%
+  - Tổng giảm giá tối đa: 20% (10% từ rank + 10% từ giới thiệu)
 - **Hỗ trợ**:
   - Chat trực tuyến với Admin.
   - Tham gia nhóm Zalo hỗ trợ.
 
 ### Quản trị viên (Admin)
 - **Quản lý sản phẩm**: Thêm, sửa, xóa sản phẩm (bao gồm cả số lượng và thời hạn).
-- **Quản lý người dùng**: Xem danh sách người dùng, số dư và ngày đăng ký.
+- **Quản lý người dùng**: Xem danh sách người dùng, số dư, tổng tiền nạp, hạng và ngày đăng ký.
+- **Điều chỉnh số dư**: Admin có thể nạp/tiền cho người dùng, tự động cập nhật tổng tiền nạp và hạng.
+- **Hệ thống rank tự động**: Rank được cập nhật tự động dựa trên tổng tiền nạp (không cần set thủ công).
 - **Hỗ trợ khách hàng**: Chat trực tiếp với người dùng qua giao diện Admin.
 
 ## 🛠️ Công nghệ sử dụng

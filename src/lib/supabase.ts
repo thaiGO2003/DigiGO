@@ -22,7 +22,7 @@ export type User = {
   referral_count?: number
 }
 
-export type UserRank = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond'
+export type UserRank = 'newbie' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond'
 
 export type ReferralEarning = {
   id: string

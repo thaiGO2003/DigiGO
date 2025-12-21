@@ -1,5 +1,8 @@
 -- Thêm trường total_deposited để theo dõi tổng tiền nạp của user
-ALTER TABLE users ADD COLUMN total_deposited bigint DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS total_deposited bigint DEFAULT 0;
+
+-- Thêm trường rank nếu chưa có
+ALTER TABLE users ADD COLUMN IF NOT EXISTS rank text DEFAULT 'bronze';
 
 -- Tạo function để cập nhật rank dựa trên tổng tiền nạp
 CREATE OR REPLACE FUNCTION update_user_rank_on_deposit()

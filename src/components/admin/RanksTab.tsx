@@ -14,40 +14,47 @@ export default function RanksTab({ users, onUpdateRank }: RanksTabProps) {
                         <h3 className="font-semibold text-lg">Các hạng hiện tại</h3>
                     </div>
                     <div className="space-y-3">
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
                             <div>
-                                <span className="font-medium text-gray-600">Đồng</span>
+                                <span className="font-medium text-green-600">Tân binh</span>
                                 <p className="text-sm text-gray-500">Giảm giá: 0%</p>
                             </div>
-                            <span className="text-sm text-gray-500">0 - 4 người giới thiệu</span>
+                            <span className="text-sm text-gray-500">Dưới 500K nạp</span>
                         </div>
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
+                            <div>
+                                <span className="font-medium text-orange-600">Đồng</span>
+                                <p className="text-sm text-gray-500">Giảm giá: 0%</p>
+                            </div>
+                            <span className="text-sm text-gray-500">500K - 1 triệu</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-100 rounded-lg">
                             <div>
                                 <span className="font-medium text-gray-600">Bạc</span>
                                 <p className="text-sm text-gray-500">Giảm giá: 2%</p>
                             </div>
-                            <span className="text-sm text-gray-500">5 - 9 người giới thiệu</span>
+                            <span className="text-sm text-gray-500">1 - 2 triệu</span>
                         </div>
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
                             <div>
-                                <span className="font-medium text-gray-600">Vàng</span>
+                                <span className="font-medium text-yellow-600">Vàng</span>
                                 <p className="text-sm text-gray-500">Giảm giá: 4%</p>
                             </div>
-                            <span className="text-sm text-gray-500">10 - 19 người giới thiệu</span>
+                            <span className="text-sm text-gray-500">2 - 3 triệu</span>
                         </div>
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                             <div>
-                                <span className="font-medium text-gray-600">Platinum</span>
+                                <span className="font-medium text-blue-600">Platinum</span>
                                 <p className="text-sm text-gray-500">Giảm giá: 6%</p>
                             </div>
-                            <span className="text-sm text-gray-500">20 - 49 người giới thiệu</span>
+                            <span className="text-sm text-gray-500">3 - 5 triệu</span>
                         </div>
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
                             <div>
-                                <span className="font-medium text-gray-600">Kim cương</span>
+                                <span className="font-medium text-purple-600">Kim cương</span>
                                 <p className="text-sm text-gray-500">Giảm giá: 8%</p>
                             </div>
-                            <span className="text-sm text-gray-500">50+ người giới thiệu</span>
+                            <span className="text-sm text-gray-500">Trên 5 triệu</span>
                         </div>
                     </div>
                 </div>
@@ -100,7 +107,7 @@ export default function RanksTab({ users, onUpdateRank }: RanksTabProps) {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {users.map((user) => {
                                 const referralCount = user.referral_count || 0
-                                const currentRank = user.rank || 'bronze'
+                                const currentRank = user.rank || 'newbie'
                                 const rankDiscount = currentRank === 'silver' ? 2 :
                                     currentRank === 'gold' ? 4 :
                                         currentRank === 'platinum' ? 6 :
@@ -115,16 +122,18 @@ export default function RanksTab({ users, onUpdateRank }: RanksTabProps) {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{referralCount}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${currentRank === 'bronze' ? 'bg-orange-100 text-orange-800' :
-                                                currentRank === 'silver' ? 'bg-gray-100 text-gray-800' :
-                                                    currentRank === 'gold' ? 'bg-yellow-100 text-yellow-800' :
-                                                        currentRank === 'platinum' ? 'bg-blue-100 text-blue-800' :
-                                                            'bg-purple-100 text-purple-800'
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${currentRank === 'newbie' ? 'bg-green-100 text-green-800' :
+                                                currentRank === 'bronze' ? 'bg-orange-100 text-orange-800' :
+                                                    currentRank === 'silver' ? 'bg-gray-200 text-gray-800' :
+                                                        currentRank === 'gold' ? 'bg-yellow-100 text-yellow-800' :
+                                                            currentRank === 'platinum' ? 'bg-blue-100 text-blue-800' :
+                                                                'bg-purple-100 text-purple-800'
                                                 }`}>
-                                                {currentRank === 'bronze' ? 'Đồng' :
-                                                    currentRank === 'silver' ? 'Bạc' :
-                                                        currentRank === 'gold' ? 'Vàng' :
-                                                            currentRank === 'platinum' ? 'Platinum' : 'Kim cương'}
+                                                {currentRank === 'newbie' ? 'Tân binh' :
+                                                    currentRank === 'bronze' ? 'Đồng' :
+                                                        currentRank === 'silver' ? 'Bạc' :
+                                                            currentRank === 'gold' ? 'Vàng' :
+                                                                currentRank === 'platinum' ? 'Platinum' : 'Kim cương'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{rankDiscount}%</td>
@@ -134,6 +143,7 @@ export default function RanksTab({ users, onUpdateRank }: RanksTabProps) {
                                                 onChange={(e) => onUpdateRank(user.id, e.target.value as User['rank'])}
                                                 className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             >
+                                                <option value="newbie">Tân binh</option>
                                                 <option value="bronze">Đồng</option>
                                                 <option value="silver">Bạc</option>
                                                 <option value="gold">Vàng</option>
