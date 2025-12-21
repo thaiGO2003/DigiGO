@@ -17,20 +17,27 @@ interface PurchaseDetail {
 }
 
 export default function PurchasedPage() {
-  const { user } = useAuth()
+  const { user, session, isInitializing } = useAuth()
   const [purchases, setPurchases] = useState<PurchaseDetail[]>([])
   const [loading, setLoading] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [copiedLink, setCopiedLink] = useState<string | null>(null)
 
   useEffect(() => {
-    if (user) {
-      fetchPurchases()
+    if (isInitializing) return
+
+    // Dùng session để check đăng nhập thay vì user profile
+    if (session) {
+      setShowAuthModal(false)
+      if (user) {
+        fetchPurchases()
+      }
     } else {
       setShowAuthModal(true)
       setLoading(false)
     }
-  }, [user])
+  }, [user, session, isInitializing])
 
   const fetchPurchases = async () => {
     if (!user) return
@@ -48,14 +55,15 @@ export default function PurchasedPage() {
           product_variants (
             name,
             duration_days,
+            guide_url,
             products (
-              name
+              name,
+              guide_url
             )
           ),
           product_keys (
             key_value
-          ),
-          guide_url
+          )
         `)
         .eq('user_id', user.id)
         .eq('type', 'purchase')
@@ -87,6 +95,13 @@ export default function PurchasedPage() {
     navigator.clipboard.writeText(key).then(() => {
       setCopiedKey(id)
       setTimeout(() => setCopiedKey(null), 2000)
+    })
+  }
+
+  const copyLinkToClipboard = (link: string, id: string) => {
+    navigator.clipboard.writeText(link).then(() => {
+      setCopiedLink(id)
+      setTimeout(() => setCopiedLink(null), 2000)
     })
   }
 
@@ -235,20 +250,48 @@ export default function PurchasedPage() {
                     </div>
 
                     {purchase.guide_url && (
-                      <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Package className="h-4 w-4 text-blue-600" />
-                            <span className="text-sm font-medium text-blue-900">Hướng dẫn cài đặt:</span>
+                      <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-blue-600 p-2 rounded-lg">
+                              <Package className="h-4 w-4 text-white" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-bold text-blue-900 block">Hướng dẫn cài đặt:</span>
+                              <span className="text-xs text-blue-600">Vui lòng đọc kỹ hướng dẫn trước khi cài</span>
+                            </div>
                           </div>
-                          <a
-                            href={purchase.guide_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:text-blue-800 font-bold underline flex items-center"
-                          >
-                            Xem hướng dẫn (Google Word)
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={purchase.guide_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 sm:flex-none px-4 py-2 bg-white text-blue-600 border border-blue-200 rounded-lg text-sm font-bold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                              Xem online
+                            </a>
+                            <button
+                              onClick={() => copyLinkToClipboard(purchase.guide_url!, purchase.id)}
+                              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm ${
+                                copiedLink === purchase.id 
+                                ? 'bg-green-500 text-white border-green-500' 
+                                : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                              }`}
+                            >
+                              {copiedLink === purchase.id ? (
+                                <>
+                                  <CheckCircle className="h-4 w-4" />
+                                  <span>Đã copy!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="h-4 w-4" />
+                                  <span>Copy Link</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}

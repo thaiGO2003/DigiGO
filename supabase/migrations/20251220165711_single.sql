@@ -180,10 +180,33 @@ CREATE POLICY "Users can update own data"
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
+CREATE POLICY "Admins can read all users"
+  ON users
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid() AND users.is_admin = true
+    )
+  );
+
+CREATE POLICY "Admins can update all users"
+  ON users
+  FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid() AND users.is_admin = true
+    )
+  );
+
 -- TRANSACTIONS
 DROP POLICY IF EXISTS "Users can read own transactions" ON transactions;
 DROP POLICY IF EXISTS "Users can create own transactions" ON transactions;
 DROP POLICY IF EXISTS "Admins can read all transactions" ON transactions;
+DROP POLICY IF EXISTS "Admins can update all transactions" ON transactions;
 
 CREATE POLICY "Users can read own transactions"
   ON transactions
@@ -200,6 +223,17 @@ CREATE POLICY "Users can create own transactions"
 CREATE POLICY "Admins can read all transactions"
   ON transactions
   FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid() AND users.is_admin = true
+    )
+  );
+
+CREATE POLICY "Admins can update all transactions"
+  ON transactions
+  FOR UPDATE
   TO authenticated
   USING (
     EXISTS (
@@ -335,6 +369,7 @@ AS $$
       'weaknesses', p.weaknesses,
       'image_url', p.image_url,
       'category', p.category,
+      'guide_url', p.guide_url,
       'created_at', p.created_at,
       'variants', (
         SELECT json_agg(
@@ -342,8 +377,10 @@ AS $$
             'id', pv.id,
             'name', pv.name,
             'price', pv.price,
+            'discount_percent', pv.discount_percent,
             'duration_days', pv.duration_days,
             'description', pv.description,
+            'guide_url', pv.guide_url,
             'stock', (
               SELECT count(*)
               FROM product_keys pk

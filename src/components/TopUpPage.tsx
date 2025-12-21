@@ -3,12 +3,12 @@ import { CreditCard, History, Copy, CheckCircle, Download, Timer, AlertCircle, R
 import { supabase, Transaction, BankConfig } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import AuthModal from './AuthModal'
-import { vnpayService } from '../lib/vnpay'
+import { sepayService } from '../lib/sepay'
 
 const PRESET_AMOUNTS = [50000, 100000, 200000, 500000, 1000000, 2000000]
 
 export default function TopUpPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, isInitializing } = useAuth()
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null)
   const [customAmount, setCustomAmount] = useState('')
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -19,62 +19,86 @@ export default function TopUpPage() {
   const [transferContent, setTransferContent] = useState('')
   const [timeLeft, setTimeLeft] = useState(15 * 60) // 15 minutes
   const [copiedField, setCopiedField] = useState<string | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'vnpay'>('bank_transfer')
   const [activeBankConfig, setActiveBankConfig] = useState<BankConfig | null>(null)
+  const [activeTransaction, setActiveTransaction] = useState<Transaction | null>(null)
+  const [currentTime, setCurrentTime] = useState(Date.now())
 
   useEffect(() => {
-    if (authLoading || !user) return
-    fetchTransactions()
-    fetchActiveBankConfig()
-  }, [authLoading, user])
-
-  useEffect(() => {
-    if (authLoading) return
-    setShowAuthModal(!user)
-  }, [authLoading, user])
-
-  // Polling for transaction status
-  useEffect(() => {
-    if (!user || !qrUrl) return
-
-    const interval = setInterval(async () => {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('status')
-        .eq('user_id', user.id)
-        .eq('status', 'completed')
-        .eq('type', 'top_up')
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      if (!error && data && data.length > 0) {
-        // Find if any of these completed transactions are recent
-        setQrUrl(null)
-        setPendingAmount(null)
-        alert('Thanh toán thành công! Số dư của bạn đã được cập nhật.')
-        fetchTransactions()
-      }
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }, [user?.id, qrUrl])
-
-  // Countdown timer
-  useEffect(() => {
-    if (!qrUrl) return
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 0) {
-          setQrUrl(null)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
+    const timer = setInterval(() => setCurrentTime(Date.now()), 1000)
     return () => clearInterval(timer)
-  }, [qrUrl])
+  }, [])
+
+  useEffect(() => {
+    if (activeTransaction) {
+      const remaining = getRemainingSeconds(activeTransaction.created_at)
+      if (remaining <= 0) {
+        setQrUrl(null)
+        setActiveTransaction(null)
+      } else {
+        setTimeLeft(remaining)
+      }
+    }
+  }, [currentTime, activeTransaction])
+
+  const isExpired = (createdAt: string) => {
+    const created = new Date(createdAt).getTime()
+    const now = currentTime
+    return now - created > 15 * 60 * 1000
+  }
+
+  const getRemainingSeconds = (createdAt: string) => {
+    const created = new Date(createdAt).getTime()
+    const now = currentTime
+    const diff = 15 * 60 * 1000 - (now - created)
+    return Math.max(0, Math.floor(diff / 1000))
+  }
+
+  useEffect(() => {
+    if (isInitializing || authLoading) return
+
+    if (user) {
+      fetchActiveBankConfig()
+      fetchTransactions()
+
+      // Realtime subscription for transactions
+      const subscription = supabase
+        .channel(`user-transactions-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'transactions',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Transaction change detected:', payload)
+            fetchTransactions() // Refresh list on any change
+            
+            // If the active transaction was completed, close the QR display
+            if (activeTransaction && 
+                payload.new && 
+                (payload.new as any).id === activeTransaction.id && 
+                (payload.new as any).status === 'completed') {
+              setQrUrl(null)
+              setActiveTransaction(null)
+              setPendingAmount(null)
+              alert('Thanh toán thành công! Số dư của bạn đã được cập nhật.')
+            }
+          }
+        )
+        .subscribe()
+
+      return () => {
+        subscription.unsubscribe()
+      }
+    }
+  }, [isInitializing, authLoading, user?.id, activeTransaction?.id])
+
+  useEffect(() => {
+    if (isInitializing || authLoading) return
+    setShowAuthModal(!user)
+  }, [isInitializing, authLoading, user])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -118,6 +142,40 @@ export default function TopUpPage() {
     }
   }
 
+  const resumeTransaction = (transaction: Transaction) => {
+    if (transaction.status !== 'pending' || isExpired(transaction.created_at)) return
+    
+    setQrUrl(transaction.metadata.qr_url)
+    setPendingAmount(transaction.amount)
+    setTransferContent(transaction.metadata.transfer_content)
+    setActiveTransaction(transaction)
+  }
+
+  const handleCancelTransaction = async (e: React.MouseEvent, transactionId: string) => {
+    e.stopPropagation() // Prevent triggering resumeTransaction
+    if (!confirm('Bạn có chắc chắn muốn hủy giao dịch này không?')) return
+
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .update({ status: 'failed' })
+        .eq('id', transactionId)
+
+      if (error) throw error
+      
+      if (activeTransaction?.id === transactionId) {
+        setQrUrl(null)
+        setActiveTransaction(null)
+        setPendingAmount(null)
+      }
+      
+      fetchTransactions()
+    } catch (error) {
+      console.error('Error canceling transaction:', error)
+      alert('Có lỗi xảy ra khi hủy giao dịch')
+    }
+  }
+
   const handleTopUp = async (amount: number) => {
     if (!user) {
       setShowAuthModal(true)
@@ -129,81 +187,61 @@ export default function TopUpPage() {
       return
     }
 
+    // Check limit: max 2 pending transactions
+    const pendingTransactions = transactions.filter(t => t.status === 'pending' && !isExpired(t.created_at))
+    if (pendingTransactions.length >= 2) {
+      alert('Bạn đang có 2 giao dịch đang xử lý. Vui lòng hoàn tất hoặc đợi chúng hết hạn.')
+      return
+    }
+
     setLoading(true)
     try {
-      const uniqueSuffix = Math.floor(1000 + Math.random() * 9000)
-      const orderId = `DIGIGO_${user.id}_${Date.now()}_${uniqueSuffix}`
+      // Generate payment content in format: DH[8-10 random digits]
+      // Example: DH1111111111
+      const uniqueSuffix = Math.floor(10000000 + Math.random() * 9000000000).toString()
+      const content = `DH${uniqueSuffix}`
       
-      if (paymentMethod === 'vnpay') {
-        // VNPay payment
-        const ipAddress = '127.0.0.1' // In production, get real IP
-        const orderInfo = `Nap tien DIGIGO ${amount.toLocaleString('vi-VN')}d`
-        
-        const paymentUrl = await vnpayService.createPaymentUrl({
-          amount,
-          orderId,
-          orderInfo,
-          ipAddress,
-          locale: 'vn'
-        })
-
-        // Create transaction record
-        const { error: transactionError } = await supabase
-          .from('transactions')
-          .insert({
-            user_id: user.id,
-            amount: amount,
-            type: 'top_up',
-            status: 'pending',
-            metadata: {
-              payment_method: 'vnpay',
-              order_id: orderId,
-              vnpay_url: paymentUrl
-            }
-          })
-
-        if (transactionError) throw transactionError
-
-        // Redirect to VNPay
-        window.location.href = paymentUrl
-        
-      } else {
-        // Bank transfer
-        if (!activeBankConfig) {
-          alert('Hệ thống nạp tiền đang bảo trì. Vui lòng liên hệ Admin.')
-          setLoading(false)
-          return
-        }
-
-        const content = `DIGIGO ${user.username || user.email?.split('@')[0]} ${uniqueSuffix}`.toUpperCase()
-        setTransferContent(content)
-
-        const bankId = activeBankConfig.bank_id
-        const accountNo = activeBankConfig.account_number
-        const accountName = activeBankConfig.account_name
-
-        const qrCodeUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(content)}&accountName=${encodeURIComponent(accountName)}`
-
-        const { error: transactionError } = await supabase
-          .from('transactions')
-          .insert({
-            user_id: user.id,
-            amount: amount,
-            type: 'top_up',
-            status: 'pending',
-            metadata: {
-              payment_method: 'bank_transfer',
-              transfer_content: content,
-              qr_url: qrCodeUrl
-            }
-          })
-
-        if (transactionError) throw transactionError
-
-        setQrUrl(qrCodeUrl)
-        setPendingAmount(amount)
-        setTimeLeft(15 * 60)
+      // Use SePay Service to create payment with active bank config
+      const sepayPayment = await sepayService.createPayment(amount, content, activeBankConfig ? {
+        bank_id: activeBankConfig.bank_id,
+        bank_name: activeBankConfig.bank_name,
+        account_number: activeBankConfig.account_number,
+        account_name: activeBankConfig.account_name
+      } : undefined)
+      
+      if (!sepayPayment.success) {
+        throw new Error('Không thể tạo thông tin thanh toán SePay')
       }
+
+      const qrCodeUrl = sepayPayment.qr_url
+      setTransferContent(content)
+
+      const { data: transaction, error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: user.id,
+          amount: amount,
+          type: 'top_up',
+          status: 'pending',
+          metadata: {
+            payment_method: 'sepay',
+            transfer_content: content,
+            qr_url: qrCodeUrl,
+            bank_info: {
+              bank_name: sepayPayment.bank_name,
+              account_number: sepayPayment.bank_account,
+              account_holder: sepayPayment.account_holder
+            }
+          }
+        })
+        .select()
+        .single()
+
+      if (transactionError) throw transactionError
+
+      setQrUrl(qrCodeUrl)
+      setPendingAmount(amount)
+      setActiveTransaction(transaction)
       
       fetchTransactions()
     } catch (error) {
@@ -221,18 +259,45 @@ export default function TopUpPage() {
     })
   }
 
-  const getStatusBadge = (status: string) => {
-    const statusMap = {
-      pending: { text: 'Đang xử lý', bg: 'bg-yellow-100 text-yellow-800' },
-      completed: { text: 'Thành công', bg: 'bg-green-100 text-green-800' },
-      failed: { text: 'Thất bại', bg: 'bg-red-100 text-red-800' },
+  const getStatusBadge = (transaction: Transaction) => {
+    if (transaction.status === 'pending' && isExpired(transaction.created_at)) {
+      return (
+        <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-400">
+          Hết hạn
+        </span>
+      )
     }
-    const statusInfo = statusMap[status as keyof typeof statusMap] || statusMap.pending
-    return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.bg}`}>
-        {statusInfo.text}
-      </span>
-    )
+
+    switch (transaction.status) {
+      case 'completed':
+        return (
+          <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-green-100 text-green-600">
+            Thành công
+          </span>
+        )
+      case 'pending':
+        const seconds = getRemainingSeconds(transaction.created_at)
+        return (
+          <div className="flex flex-col items-end gap-1">
+            <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-600">
+              Đang xử lý
+            </span>
+            {seconds > 0 && (
+              <span className="text-[10px] text-blue-500 font-medium">
+                Còn {formatTime(seconds)}
+              </span>
+            )}
+          </div>
+        )
+      case 'failed':
+        return (
+          <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-600">
+            Thất bại
+          </span>
+        )
+      default:
+        return null
+    }
   }
 
   if (!user) {
@@ -283,42 +348,6 @@ export default function TopUpPage() {
 
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">Phương thức thanh toán</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <button
-                        onClick={() => setPaymentMethod('bank_transfer')}
-                        className={`p-4 rounded-2xl border-2 transition-all duration-200 text-left ${paymentMethod === 'bank_transfer'
-                          ? 'border-blue-600 bg-blue-50 shadow-md'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                          }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <CreditCard className="h-6 w-6 text-blue-600" />
-                          <div>
-                            <p className="font-bold text-gray-900">Chuyển khoản ngân hàng</p>
-                            <p className="text-sm text-gray-500">Quét mã QR hoặc chuyển khoản thủ công</p>
-                          </div>
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => setPaymentMethod('vnpay')}
-                        className={`p-4 rounded-2xl border-2 transition-all duration-200 text-left ${paymentMethod === 'vnpay'
-                          ? 'border-blue-600 bg-blue-50 shadow-md'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                          }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <Globe className="h-6 w-6 text-green-600" />
-                          <div>
-                            <p className="font-bold text-gray-900">VNPay</p>
-                            <p className="text-sm text-gray-500">Thanh toán trực tuyến qua VNPay</p>
-                          </div>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-3">Chọn mệnh giá nhanh</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {PRESET_AMOUNTS.map((amount) => (
@@ -360,12 +389,30 @@ export default function TopUpPage() {
                     </p>
                   </div>
 
+                  {activeBankConfig && (
+                    <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-blue-100">
+                          <Globe className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Ngân hàng thụ hưởng</p>
+                          <p className="text-sm font-bold text-gray-900">{activeBankConfig.bank_name}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Số tài khoản</p>
+                        <p className="text-sm font-bold text-gray-900">{activeBankConfig.account_number}</p>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     onClick={() => {
                       const amount = selectedAmount || parseInt(customAmount)
                       if (amount) handleTopUp(amount)
                     }}
-                    disabled={loading || (!selectedAmount && !customAmount) || (paymentMethod === 'bank_transfer' && !activeBankConfig)}
+                    disabled={loading || (!selectedAmount && !customAmount) || !activeBankConfig}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-bold text-xl shadow-lg shadow-blue-200 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center group"
                   >
                     {loading ? (
@@ -377,7 +424,7 @@ export default function TopUpPage() {
                       </>
                     )}
                   </button>
-                  {paymentMethod === 'bank_transfer' && !activeBankConfig && (
+                  {!activeBankConfig && (
                     <div className="mt-3 p-3 bg-red-50 text-red-600 rounded-xl text-sm font-medium text-center flex items-center justify-center">
                       <AlertCircle className="h-4 w-4 mr-2" />
                       Hệ thống nạp tiền đang bảo trì
@@ -418,7 +465,10 @@ export default function TopUpPage() {
                     <span className="text-2xl font-black text-blue-600">{pendingAmount?.toLocaleString('vi-VN')}đ</span>
                   </div>
                   <button
-                    onClick={() => setQrUrl(null)}
+                    onClick={() => {
+                      setQrUrl(null)
+                      setActiveTransaction(null)
+                    }}
                     className="text-gray-400 hover:text-red-500 font-medium text-sm py-2 transition-colors"
                   >
                     ← Hủy và tạo đơn khác
@@ -431,14 +481,26 @@ export default function TopUpPage() {
                 <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
                   <h3 className="text-xl font-bold flex items-center mb-6">
                     <AlertCircle className="h-5 w-5 mr-2 text-blue-600" />
-                    Thông tin chuyển khoản
+                    Thông tin chuyển khoản SePay
                   </h3>
 
                   <div className="space-y-4">
                     {[
-                      { label: 'Ngân hàng', value: activeBankConfig?.bank_name || 'N/A', key: 'bank' },
-                      { label: 'Số tài khoản', value: activeBankConfig?.account_number || 'N/A', key: 'account' },
-                      { label: 'Chủ tài khoản', value: activeBankConfig?.account_name || 'N/A', key: 'name' },
+                      { 
+                        label: 'Ngân hàng', 
+                        value: activeTransaction?.metadata?.bank_info?.bank_name || 'TPBank', 
+                        key: 'bank' 
+                      },
+                      { 
+                        label: 'Số tài khoản', 
+                        value: activeTransaction?.metadata?.bank_info?.account_number || '60394352614', 
+                        key: 'account' 
+                      },
+                      { 
+                        label: 'Chủ tài khoản', 
+                        value: activeTransaction?.metadata?.bank_info?.account_holder || 'LUONG QUOC THAI', 
+                        key: 'name' 
+                      },
                       { label: 'Nội dung chuyển khoản', value: transferContent, key: 'content', highlight: true },
                     ].map((item) => (
                       <div key={item.key} className={`p-4 rounded-2xl border-2 transition-all ${item.highlight ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-transparent hover:border-gray-200'}`}>
@@ -466,7 +528,7 @@ export default function TopUpPage() {
                       Hệ thống tự động cộng tiền
                     </h4>
                     <p className="text-green-700 text-xs leading-relaxed">
-                      Sau khi chuyển khoản thành công, hệ thống sẽ tự động cộng tiền vào tài khoản của bạn trong vòng 1-2 phút. Vui lòng ghi chính xác nội dung chuyển khoản.
+                      Sau khi chuyển khoản thành công, hệ thống SePay sẽ tự động xác nhận và cộng tiền vào tài khoản của bạn trong vòng 1-2 phút. Vui lòng giữ đúng nội dung chuyển khoản để được xử lý tự động.
                     </p>
                   </div>
                 </div>
@@ -493,18 +555,41 @@ export default function TopUpPage() {
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-50">
-                    {transactions.map((transaction) => (
-                      <div key={transaction.id} className="p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-gray-900">+{transaction.amount.toLocaleString('vi-VN')}đ</span>
-                          {getStatusBadge(transaction.status)}
+                    {transactions.map((transaction) => {
+                      const canResume = transaction.status === 'pending' && !isExpired(transaction.created_at)
+                      return (
+                        <div 
+                          key={transaction.id} 
+                          className={`p-4 transition-colors relative group/item ${canResume ? 'hover:bg-blue-50 cursor-pointer border-l-4 border-l-transparent hover:border-l-blue-500' : 'hover:bg-gray-50'}`}
+                          onClick={() => canResume && resumeTransaction(transaction)}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-gray-900">+{transaction.amount.toLocaleString('vi-VN')}đ</span>
+                            <div className="flex items-center gap-2">
+                              {canResume && (
+                                <button
+                                  onClick={(e) => handleCancelTransaction(e, transaction.id)}
+                                  className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-red-100 text-red-500 rounded-md transition-all text-[10px] font-bold flex items-center gap-1 border border-red-200"
+                                  title="Hủy giao dịch"
+                                >
+                                  Hủy đơn
+                                </button>
+                              )}
+                              {getStatusBadge(transaction)}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-400">{new Date(transaction.created_at).toLocaleDateString('vi-VN')}</span>
+                            <div className="flex items-center gap-2">
+                              {canResume && (
+                                <span className="text-[10px] text-blue-600 font-bold animate-pulse">Bấm để tiếp tục</span>
+                              )}
+                              <span className="text-[10px] text-gray-300 font-mono">#{transaction.id.slice(-6).toUpperCase()}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-400">{new Date(transaction.created_at).toLocaleDateString('vi-VN')}</span>
-                          <span className="text-[10px] text-gray-300 font-mono">#{transaction.id.slice(-6).toUpperCase()}</span>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import Turnstile from 'react-turnstile'
 import { X, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { supabase } from '../lib/supabase'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -21,7 +20,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [message, setMessage] = useState('')
   const [referralCode, setReferralCode] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
-  
+
   const { signIn, signUp, resetPassword } = useAuth()
 
   useEffect(() => {
@@ -63,34 +62,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           throw new Error('Tên đăng nhập không hợp lệ (3-50 ký tự, chỉ chữ, số và gạch dưới)')
         }
 
-        const { error } = await signUp(email, password, username, fullName, captchaToken || undefined)
+        const { error } = await signUp(email, password, username, fullName, captchaToken || undefined, referralCode.trim())
         if (error) throw error
-        
-        // If there's a referral code (from URL or manual input), wait a bit then set the referrer
-        if (referralCode.trim()) {
-          setTimeout(async () => {
-            try {
-              const { data: { user: currentUser } } = await supabase.auth.getUser()
-              if (currentUser) {
-                const { data: refData, error: refError } = await supabase.rpc('set_referrer', {
-                  p_user_id: currentUser.id,
-                  p_referral_code: referralCode.trim().toUpperCase()
-                })
-                
-                if (refError) {
-                  console.error('Error setting referrer:', refError)
-                } else if (refData?.success) {
-                  console.log('Referrer set successfully')
-                } else {
-                  console.warn('Invalid referral code')
-                }
-              }
-            } catch (refErr) {
-              console.error('Error in referral setup:', refErr)
-            }
-          }, 1000)
-        }
-        
+
         setMessage('Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.')
       } else if (mode === 'forgot') {
         const { error } = await resetPassword(email)
@@ -266,11 +240,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           )}
 
           {message && (
-            <div className={`p-3 rounded-md text-sm ${
-              message.includes('thành công') || message.includes('gửi')
-                ? 'bg-green-50 text-green-700'
-                : 'bg-red-50 text-red-700'
-            }`}>
+            <div className={`p-3 rounded-md text-sm ${message.includes('thành công') || message.includes('gửi')
+              ? 'bg-green-50 text-green-700'
+              : 'bg-red-50 text-red-700'
+              }`}>
               {message}
             </div>
           )}
@@ -280,9 +253,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             disabled={loading}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {loading ? 'Đang xử lý...' : 
-             mode === 'login' ? 'Đăng nhập' :
-             mode === 'register' ? 'Đăng ký' : 'Gửi email khôi phục'}
+            {loading ? 'Đang xử lý...' :
+              mode === 'login' ? 'Đăng nhập' :
+                mode === 'register' ? 'Đăng ký' : 'Gửi email khôi phục'}
           </button>
 
           <div className="text-center space-y-2 text-sm">

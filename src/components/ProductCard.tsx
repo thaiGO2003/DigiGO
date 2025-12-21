@@ -1,0 +1,158 @@
+import { useState } from 'react'
+import { ShoppingCart, Package, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
+import { Product, ProductVariant, User } from '../lib/supabase'
+
+interface ProductCardProps {
+  product: Product
+  user: User | null
+  onPurchase: (variant: ProductVariant, productName: string) => void
+}
+
+export default function ProductCard({ product, user, onPurchase }: ProductCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  const calculatePriceWithRank = (price: number, variantDiscount: number = 0) => {
+    const rankDiscount = user?.rank ? 
+      (user.rank === 'silver' ? 2 : 
+       user.rank === 'gold' ? 4 : 
+       user.rank === 'platinum' ? 6 : 
+       user.rank === 'diamond' ? 8 : 0) : 0
+    const totalDiscount = Math.min(variantDiscount + rankDiscount, 100)
+    return Math.round(price * (100 - totalDiscount) / 100)
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-md border hover:shadow-lg transition-shadow flex flex-col h-full">
+      <img
+        src={product.image_url || 'https://images.pexels.com/photos/230544/pexels-photo-230544.jpeg?auto=compress&cs=tinysrgb&w=400'}
+        alt={product.name}
+        className="w-full h-48 object-cover rounded-t-lg"
+      />
+      
+      <div className="p-6 flex flex-col lg:flex-row gap-6 flex-1">
+        {/* Left Column: Info */}
+        <div className="flex-1">
+          <h3 className="text-xl font-bold text-gray-900 mb-2">{product.name}</h3>
+
+          <div className={`relative ${!isExpanded ? 'max-h-[120px] overflow-hidden' : ''}`}>
+            {product.mechanism && (
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-gray-700 mb-1">Cơ chế:</p>
+                <p className="text-sm text-gray-600">{product.mechanism}</p>
+              </div>
+            )}
+
+            {product.recommended_model && (
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-gray-700 mb-1">Model khuyến dùng:</p>
+                <p className="text-sm text-blue-600">{product.recommended_model}</p>
+              </div>
+            )}
+
+            {product.strengths && (
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-green-700 mb-1">Điểm mạnh:</p>
+                <p className="text-sm text-gray-600">{product.strengths}</p>
+              </div>
+            )}
+
+            {product.weaknesses && (
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-red-700 mb-1">Điểm yếu:</p>
+                <p className="text-sm text-gray-600">{product.weaknesses}</p>
+              </div>
+            )}
+            
+            {!isExpanded && (
+              <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent" />
+            )}
+          </div>
+
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium mt-2"
+          >
+            {isExpanded ? (
+              <>
+                Thu gọn <ChevronUp className="h-4 w-4" />
+              </>
+            ) : (
+              <>
+                Xem thêm <ChevronDown className="h-4 w-4" />
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Right Column: Packages */}
+        <div className="lg:w-80 border-t lg:border-t-0 lg:border-l pt-4 lg:pt-0 lg:pl-6 flex flex-col">
+          <p className="text-sm font-semibold text-gray-700 mb-3">Chọn gói:</p>
+          <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
+            {product.variants?.map((variant) => (
+              <div key={variant.id} className="p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-gray-900 text-sm">{variant.name}</span>
+                  {(variant.stock || 0) <= 0 ? (
+                    <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-medium">
+                      Hết hàng
+                    </span>
+                  ) : (variant.stock || 0) < 5 ? (
+                    <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5">
+                      <AlertTriangle className="h-2.5 w-2.5" />
+                      Sắp hết
+                    </span>
+                  ) : null}
+                </div>
+                
+                <div className="flex items-end justify-between">
+                  <div className="flex flex-col">
+                    {(variant.discount_percent || 0) > 0 || (user?.rank && user.rank !== 'bronze') ? (
+                      <>
+                        <span className="text-xs text-gray-400 line-through">
+                          {variant.price.toLocaleString('vi-VN')}đ
+                        </span>
+                        <div className="flex items-center flex-wrap gap-1">
+                          <span className="text-sm font-bold text-red-600">
+                            {calculatePriceWithRank(variant.price, variant.discount_percent || 0).toLocaleString('vi-VN')}đ
+                          </span>
+                          {(variant.discount_percent || 0) > 0 && (
+                            <span className="text-[10px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-medium">
+                              -{variant.discount_percent}%
+                            </span>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-sm font-bold text-blue-600">
+                        {variant.price.toLocaleString('vi-VN')}đ
+                      </span>
+                    )}
+                  </div>
+                  
+                  <button
+                    onClick={() => onPurchase(variant, product.name)}
+                    disabled={(variant.stock || 0) <= 0}
+                    className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1 ${(variant.stock || 0) <= 0
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
+                  >
+                    <ShoppingCart className="h-3 w-3" />
+                    Mua
+                  </button>
+                </div>
+                
+                {(variant.stock || 0) > 0 && (
+                  <div className="mt-1 text-[10px] text-gray-500 flex items-center gap-1">
+                    <Package className="h-2.5 w-2.5" />
+                    {variant.stock || 0} còn lại
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

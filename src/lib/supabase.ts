@@ -12,11 +12,16 @@ export type User = {
   full_name?: string
   balance: number
   is_admin: boolean
+  is_banned?: boolean
   referral_code?: string
   referred_by?: string
   last_username_change?: string
   created_at: string
+  rank?: UserRank
+  referral_count?: number
 }
+
+export type UserRank = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond'
 
 export type ReferralEarning = {
   id: string
@@ -52,6 +57,8 @@ export type ProductVariant = {
   stock?: number
   guide_url?: string
   created_at: string
+  is_manual_delivery?: boolean
+  manual_stock?: number
 }
 
 export type ProductKey = {
@@ -70,6 +77,7 @@ export type Transaction = {
   status: 'pending' | 'completed' | 'failed'
   variant_id?: string
   key_id?: string
+  metadata?: any
   created_at: string
 }
 
@@ -86,6 +94,7 @@ export type BankConfig = {
   id: string
   bank_id: string
   bank_name: string
+  napas_code?: string
   account_number: string
   account_name: string
   is_active: boolean

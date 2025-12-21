@@ -1,39 +1,42 @@
 import { useState } from 'react'
 import { ShoppingCart, User, LogOut, Menu, X } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import AuthModal from './AuthModal'
 
-interface HeaderProps {
-  currentPage: string
-  onNavigate: (page: string) => void
-}
-
-export default function Header({ currentPage, onNavigate }: HeaderProps) {
-  const { user, signOut } = useAuth()
+export default function Header() {
+  const { user, signOut, isInitializing } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Current page based on location path
+  const currentPage = location.pathname.substring(1) || 'products'
 
   // Check if user is admin
   const isAdmin = user?.email?.toLowerCase() === 'luongquocthai.thaigo.2003@gmail.com' || user?.is_admin
 
   const menuItems = [
-    { key: 'purchased', label: 'Đã Mua' },
     { key: 'products', label: 'Sản phẩm' },
     { key: 'topup', label: 'Nạp tiền' },
-    { key: 'referral', label: 'Giới thiệu' },
+
     { key: 'about', label: 'Về chúng tôi' },
     ...(isAdmin ? [{ key: 'admin', label: 'Quản lý' }] : []),
   ]
 
   const handleNavigation = (page: string) => {
-    if ((page === 'purchased' || page === 'topup' || page === 'referral' || page === 'admin') && !user) {
+    // Wait for auth to initialize before making navigation decisions
+    if (isInitializing) return
+
+    if ((page === 'purchased' || page === 'topup' || page === 'admin') && !user) {
       setShowAuthModal(true)
       return
     }
     if (page === 'admin' && !isAdmin) {
       return // Don't allow non-admin access
     }
-    onNavigate(page)
+    navigate(`/${page}`)
     setMobileMenuOpen(false)
   }
 
@@ -53,7 +56,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
             {/* Logo */}
             <div
               className="flex items-center cursor-pointer"
-              onClick={() => onNavigate('products')}
+              onClick={() => navigate('/products')}
             >
               <ShoppingCart className="h-8 w-8 text-blue-600 mr-2" />
               <span className="text-xl font-bold text-gray-900">DigiGO</span>
@@ -79,7 +82,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
             <div className="flex items-center space-x-3 sm:space-x-4">
               {user && (
                 <div
-                  onClick={() => onNavigate('profile')}
+                  onClick={() => navigate('/profile')}
                   className="hidden sm:flex items-center space-x-3 px-3 py-1.5 rounded-full border border-gray-200 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
                   title="Xem trang cá nhân"
                 >
@@ -157,11 +160,10 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
                   <>
                     <button
                       onClick={() => handleNavigation('profile')}
-                      className={`px-3 py-2 rounded-md text-left text-sm font-medium transition-colors duration-200 ${
-                        currentPage === 'profile'
-                          ? 'text-blue-600 bg-blue-50'
-                          : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                      }`}
+                      className={`px-3 py-2 rounded-md text-left text-sm font-medium transition-colors duration-200 ${currentPage === 'profile'
+                        ? 'text-blue-600 bg-blue-50'
+                        : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                        }`}
                     >
                       Hồ sơ cá nhân
                     </button>
