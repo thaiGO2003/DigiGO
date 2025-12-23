@@ -118,7 +118,16 @@ export default function TransactionsTab({
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 {tx.type === 'top_up' ? (
-                                                    'Nạp tiền'
+                                                    <div>
+                                                        <span className="block font-medium text-green-600">
+                                                            {tx.metadata?.is_admin_adjustment ? 'Điều chỉnh' : 'Nạp tiền'}
+                                                        </span>
+                                                        {tx.metadata?.note && (
+                                                            <span className="text-xs text-gray-400 italic">
+                                                                {tx.metadata.note}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 ) : (
                                                     <div>
                                                         <span className="block font-medium text-purple-600">Mua hàng</span>

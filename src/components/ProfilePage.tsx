@@ -467,8 +467,9 @@ export default function ProfilePage() {
                                   )}
                                   <span className="font-medium text-gray-900">
                                     {tx.type === 'purchase'
-                                      ? tx.product_variants?.products?.name || 'Sản phẩm'
-                                      : 'Nạp tiền vào tài khoản'}
+                                      ? (tx.product_variants?.products?.name || 'Sản phẩm')
+                                      : ((tx.metadata as any)?.is_admin_adjustment ? ((tx.metadata as any)?.note || 'Điều chỉnh số dư') : 'Nạp tiền vào tài khoản')
+                                    }
                                   </span>
                                   <span
                                     className={`px-2 py-0.5 rounded-full text-xs font-medium ${tx.status === 'completed'
