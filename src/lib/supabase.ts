@@ -43,6 +43,7 @@ export type Product = {
   image_url?: string
   category: string
   guide_url?: string
+  variant_sort_strategy?: 'default' | 'price_asc' | 'price_desc' | 'duration_asc' | 'duration_desc' | 'bestselling' | 'stock_asc' | 'stock_desc'
   created_at: string
   variants?: ProductVariant[]
 }
@@ -60,6 +61,8 @@ export type ProductVariant = {
   created_at: string
   is_manual_delivery?: boolean
   manual_stock?: number
+  sort_order?: number
+  total_sold?: number
 }
 
 export type ProductKey = {

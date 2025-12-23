@@ -1,4 +1,4 @@
-import { ShoppingCart, Package, AlertTriangle } from 'lucide-react'
+import { ShoppingCart, Package, AlertTriangle, ExternalLink } from 'lucide-react'
 import { Product, ProductVariant, User } from '../lib/supabase'
 
 interface ProductCardProps {
@@ -62,6 +62,20 @@ export default function ProductCard({ product, user, onPurchase }: ProductCardPr
               <div>
                 <p className="text-sm font-semibold text-red-700 mb-1">Điểm yếu:</p>
                 <p className="text-sm text-gray-600 whitespace-pre-line">{product.weaknesses}</p>
+              </div>
+            )}
+
+            {product.guide_url && (
+              <div>
+                <p className="text-sm font-semibold text-blue-700 mb-1">Link doc hướng dẫn:</p>
+                <a 
+                  href={product.guide_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                >
+                  Xem hướng dẫn <ExternalLink className="h-3 w-3" />
+                </a>
               </div>
             )}
           </div>

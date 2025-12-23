@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Package, Users, MessageCircle, CreditCard, Landmark, Award } from 'lucide-react'
+import { BarChart2, Package, Users, MessageCircle, CreditCard, Landmark, Award } from 'lucide-react'
 import { supabase, Product, ProductVariant, User, ChatMessage, BankConfig } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
@@ -18,7 +18,8 @@ import {
   AdjustBalanceModal,
   AdminTabType,
   TransactionFilter,
-  removeVietnameseTones
+  removeVietnameseTones,
+  StatsTab
 } from './admin'
 
 export default function AdminPage() {
@@ -26,7 +27,29 @@ export default function AdminPage() {
   const isAdmin = user?.email?.toLowerCase() === 'luongquocthai.thaigo.2003@gmail.com' || user?.is_admin
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<AdminTabType>('products')
+  const [activeTab, setActiveTab] = useState<AdminTabType>('stats')
+
+  const tabs = [
+    { id: 'stats', label: 'Thống kê', icon: BarChart2 },
+    { id: 'products', label: 'Sản phẩm', icon: Package },
+    { id: 'users', label: 'Người dùng', icon: Users },
+    { id: 'chat', label: 'Chat hỗ trợ', icon: MessageCircle },
+    { id: 'transactions', label: 'Giao dịch', icon: CreditCard },
+    { id: 'bank', label: 'Ngân hàng', icon: Landmark },
+    { id: 'ranks', label: 'Hạng', icon: Award },
+  ]
+
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '')
+    if (hash && tabs.some(t => t.id === hash)) {
+      setActiveTab(hash as AdminTabType)
+    }
+  }, [])
+
+  const handleTabClick = (tabId: AdminTabType) => {
+    setActiveTab(tabId)
+    window.location.hash = tabId
+  }
 
   // Data states
   const [products, setProducts] = useState<Product[]>([])
@@ -37,6 +60,7 @@ export default function AdminPage() {
   const [newMessage, setNewMessage] = useState('')
   const [transactions, setTransactions] = useState<any[]>([])
   const [transactionFilter, setTransactionFilter] = useState<TransactionFilter>('all')
+  const [transactionDateFilter, setTransactionDateFilter] = useState<{ start: string, end: string } | null>(null)
   const [bankConfigs, setBankConfigs] = useState<BankConfig[]>([])
 
   // Modal states
@@ -136,7 +160,7 @@ export default function AdminPage() {
   const fetchTransactions = async () => {
     const { data } = await supabase
       .from('transactions')
-      .select('*, users(email, full_name, balance), product_variants(name, products(name))')
+      .select('*, users(email, full_name, balance, is_admin), product_variants(name, products(*)), product_keys(*)')
       .order('created_at', { ascending: false })
     setTransactions(data || [])
   }
@@ -282,37 +306,29 @@ export default function AdminPage() {
     )
   }
 
-  const tabs = [
-    { id: 'products', label: 'Sản phẩm', icon: Package },
-    { id: 'users', label: 'Người dùng', icon: Users },
-    { id: 'chat', label: 'Chat hỗ trợ', icon: MessageCircle },
-    { id: 'transactions', label: 'Giao dịch', icon: CreditCard },
-    { id: 'bank', label: 'Ngân hàng', icon: Landmark },
-    { id: 'ranks', label: 'Hạng', icon: Award },
-  ]
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Bảng điều khiển Admin</h1>
-        <div className="text-sm text-gray-600">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Bảng điều khiển Admin</h1>
+        <div className="text-xs sm:text-sm text-gray-600">
           Xin chào, <span className="font-semibold">{user?.full_name || user?.email}</span>
         </div>
       </div>
 
       {/* Tab Navigation */}
-      <div className="mb-8 border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div className="mb-4 sm:mb-8 border-b border-gray-200">
+        <nav className="-mb-px flex overflow-x-auto scrollbar-hide space-x-2 sm:space-x-8">
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as AdminTabType)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${activeTab === tab.id
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+              onClick={() => handleTabClick(tab.id as AdminTabType)}
+              className={`py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1 sm:space-x-2 whitespace-nowrap cursor-pointer transition-colors ${
+                activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
             >
-              <tab.icon className="h-4 w-4" />
+              <tab.icon className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{tab.label}</span>
             </button>
           ))}
@@ -320,6 +336,16 @@ export default function AdminPage() {
       </div>
 
       {/* Tab Content */}
+      {activeTab === 'stats' && (
+        <StatsTab 
+          onNavigateToTransactions={(date) => {
+            setTransactionDateFilter({ start: date, end: date })
+            setActiveTab('transactions')
+            window.location.hash = 'transactions'
+          }}
+        />
+      )}
+
       {activeTab === 'products' && (
         <ProductsTab
           products={products}
@@ -348,7 +374,9 @@ export default function AdminPage() {
         <TransactionsTab
           transactions={transactions}
           transactionFilter={transactionFilter}
+          dateFilter={transactionDateFilter}
           onFilterChange={setTransactionFilter}
+          onDateFilterChange={setTransactionDateFilter}
           onRefresh={() => { fetchTransactions(); fetchUsers() }}
           onApprove={handleApproveTransaction}
           onReject={handleRejectTransaction}

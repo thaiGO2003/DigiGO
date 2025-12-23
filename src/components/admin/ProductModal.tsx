@@ -11,7 +11,8 @@ export default function ProductModal({ isOpen, onClose, product, onSave }: Produ
         weaknesses: '',
         image_url: '',
         category: 'software',
-        guide_url: ''
+        guide_url: '',
+        variant_sort_strategy: 'default'
     })
 
     useEffect(() => {
@@ -24,7 +25,8 @@ export default function ProductModal({ isOpen, onClose, product, onSave }: Produ
                 weaknesses: product.weaknesses || '',
                 image_url: product.image_url || '',
                 category: product.category || 'software',
-                guide_url: product.guide_url || ''
+                guide_url: product.guide_url || '',
+                variant_sort_strategy: (product as any).variant_sort_strategy || 'default'
             })
         } else {
             setFormData({
@@ -35,7 +37,8 @@ export default function ProductModal({ isOpen, onClose, product, onSave }: Produ
                 weaknesses: '',
                 image_url: '',
                 category: 'software',
-                guide_url: ''
+                guide_url: '',
+                variant_sort_strategy: 'default'
             })
         }
     }, [product, isOpen])
@@ -43,13 +46,32 @@ export default function ProductModal({ isOpen, onClose, product, onSave }: Produ
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         try {
-            if (product) {
-                const { error } = await supabase.from('products').update(formData).eq('id', product.id)
-                if (error) throw error
-            } else {
-                const { error } = await supabase.from('products').insert(formData)
-                if (error) throw error
+            // Remove variant_sort_strategy if it's not supported by DB schema yet
+            const saveData = async (data: any) => {
+                if (product) {
+                    const { error } = await supabase.from('products').update(data).eq('id', product.id)
+                    if (error) throw error
+                } else {
+                    const { error } = await supabase.from('products').insert(data)
+                    if (error) throw error
+                }
             }
+
+            try {
+                await saveData(formData)
+            } catch (error: any) {
+                // If error is about missing column, try saving without it
+                if (error.message?.includes('variant_sort_strategy')) {
+                    const { variant_sort_strategy, ...dataWithoutSort } = formData
+                    await saveData(dataWithoutSort)
+                    alert('Đã lưu sản phẩm (nhưng chưa lưu cấu hình sắp xếp do chưa cập nhật DB). Vui lòng liên hệ Admin chạy lệnh SQL.')
+                    onSave()
+                    onClose()
+                    return
+                }
+                throw error
+            }
+
             onSave()
             onClose()
             alert('Đã lưu sản phẩm thành công!')
@@ -148,6 +170,24 @@ export default function ProductModal({ isOpen, onClose, product, onSave }: Produ
                                 <option value="game">Game</option>
                                 <option value="education">Giáo dục</option>
                             </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Sắp xếp gói sản phẩm</label>
+                            <select
+                                value={formData.variant_sort_strategy}
+                                onChange={(e) => setFormData({ ...formData, variant_sort_strategy: e.target.value })}
+                                className="w-full px-3 py-2 border rounded-md"
+                            >
+                                <option value="default">Mặc định (Admin sắp xếp)</option>
+                                <option value="price_asc">Giá: Thấp đến Cao</option>
+                                <option value="price_desc">Giá: Cao đến Thấp</option>
+                                <option value="duration_asc">Thời hạn: Ngắn đến Dài</option>
+                                <option value="duration_desc">Thời hạn: Dài đến Ngắn</option>
+                                <option value="bestselling">Bán chạy nhất</option>
+                                <option value="stock_asc">Tồn kho: Thấp đến Cao</option>
+                                <option value="stock_desc">Tồn kho: Cao đến Thấp</option>
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">Cấu hình này sẽ ghi đè cách sắp xếp mặc định khi hiển thị cho người dùng.</p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-1">Link hướng dẫn cài đặt (Google Doc)</label>

@@ -9,7 +9,8 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
         discount_percent: 0,
         duration_days: 0,
         description: '',
-        guide_url: ''
+        guide_url: '',
+        sort_order: 0
     })
 
     useEffect(() => {
@@ -20,7 +21,8 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
                 discount_percent: variant.discount_percent || 0,
                 duration_days: variant.duration_days || 0,
                 description: variant.description || '',
-                guide_url: variant.guide_url || ''
+                guide_url: variant.guide_url || '',
+                sort_order: (variant as any).sort_order || 0
             })
         } else {
             setFormData({
@@ -29,7 +31,8 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
                 discount_percent: 0,
                 duration_days: 0,
                 description: '',
-                guide_url: ''
+                guide_url: '',
+                sort_order: 0
             })
         }
     }, [variant, isOpen])
@@ -126,6 +129,17 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
                                 className="w-full px-3 py-2 border rounded-md"
                                 rows={2}
                             />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Thứ tự hiển thị</label>
+                            <input
+                                type="number"
+                                value={formData.sort_order}
+                                onChange={(e) => setFormData({ ...formData, sort_order: Number(e.target.value) })}
+                                className="w-full px-3 py-2 border rounded-md"
+                                placeholder="0"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Số nhỏ hơn sẽ hiển thị trước (nếu chọn sắp xếp mặc định)</p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-1">Link hướng dẫn riêng cho gói này (tùy chọn)</label>

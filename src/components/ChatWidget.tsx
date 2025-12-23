@@ -43,6 +43,61 @@ export default function ChatWidget() {
     audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2i78OeeSwkNUKrkwXkqBSh+zPLaizsKEle06umrVhgLUKXh8bllGgU2jdXxxn0tBSh+zvHajzsKEla56++lWRgLUKHk8L1nHwU3i9bwxn4tBSd+zfHYjTsKElW36+ypWxkLT6Hk7sBoHwc5jNXxxX0tBSZ/zPHWjzoKEVa15++pWxkLTqDl7cBpIQc5i9XwxH4sBSV/y/HWjjoKEFS05O+qXRkLTaDl7L9qIQc5i9TwxH4sBCV/y/HWjToKEVS04++rXRkLTKDl7L9qIQc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkL')
   }, [])
 
+  const sendText = async (text: string) => {
+    if (!text.trim() || loading) return
+
+    if (!user) {
+      setNewMessage(text) // Preserve message
+      setShowAuthModal(true)
+      return
+    }
+
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          user_id: user.id,
+          message: text.trim(),
+          is_admin: false
+        })
+
+      if (error) throw error
+
+      // Send Telegram notification if user is not admin
+      if (!user.is_admin) {
+        const userIdentifier = user.username || user.full_name || user.email
+        const telegramMsg = `<b>Tin nhắn mới từ khách hàng:</b>\n\nUser: ${userIdentifier}\nNội dung: ${text.trim()}`
+        sendTelegramNotification(telegramMsg)
+      }
+
+      setNewMessage('')
+    } catch (error) {
+      console.error('Error sending message:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Listen for open-chat-support event
+  useEffect(() => {
+    const handleOpenChat = async (e: any) => {
+      setIsOpen(true)
+      if (e.detail?.message) {
+        // Auto send if logged in, otherwise pre-fill
+        if (user) {
+          await sendText(e.detail.message)
+        } else {
+          setNewMessage(e.detail.message)
+          setShowAuthModal(true)
+        }
+      }
+    }
+
+    window.addEventListener('open-chat-support', handleOpenChat)
+    return () => window.removeEventListener('open-chat-support', handleOpenChat)
+  }, [user, loading]) // Add dependencies
+
   const fetchMessages = async () => {
     if (!user) return
 

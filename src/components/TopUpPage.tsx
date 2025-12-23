@@ -22,12 +22,19 @@ export default function TopUpPage() {
   const [activeBankConfig, setActiveBankConfig] = useState<BankConfig | null>(null)
   const [activeTransaction, setActiveTransaction] = useState<Transaction | null>(null)
   const [currentTime, setCurrentTime] = useState(Date.now())
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
 
   const lastProcessedTxId = useRef<string | null>(null)
+  const successModalTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000)
-    return () => clearInterval(timer)
+    return () => {
+      clearInterval(timer)
+      if (successModalTimerRef.current) {
+        clearTimeout(successModalTimerRef.current)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -90,7 +97,15 @@ export default function TopUpPage() {
               setQrUrl(null)
               setActiveTransaction(null)
               setPendingAmount(null)
-              alert('Thanh toán thành công! Số dư của bạn đã được cập nhật.')
+              
+              // Show success modal and auto-close after 5 seconds
+              setShowSuccessModal(true)
+              if (successModalTimerRef.current) {
+                clearTimeout(successModalTimerRef.current)
+              }
+              successModalTimerRef.current = setTimeout(() => {
+                setShowSuccessModal(false)
+              }, 5000)
             }
           }
         )
@@ -387,6 +402,7 @@ export default function TopUpPage() {
                         }}
                         placeholder="VD: 100,000"
                         className="w-full pl-6 pr-16 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl text-2xl font-bold transition-all outline-none"
+                        step="5000"
                       />
                       <span className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xl">đ</span>
                     </div>
@@ -604,6 +620,37 @@ export default function TopUpPage() {
           </div>
         )}
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95 duration-300">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-12 w-12 text-green-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Thanh toán thành công!</h3>
+              <p className="text-gray-600 mb-6">Số dư của bạn đã được cập nhật</p>
+              <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                <p className="text-sm text-gray-500 mb-1">Số dư hiện tại</p>
+                <p className="text-3xl font-bold text-blue-600">{user?.balance.toLocaleString('vi-VN')}đ</p>
+              </div>
+              {/* <button
+                onClick={() => {
+                  setShowSuccessModal(false)
+                  if (successModalTimerRef.current) {
+                    clearTimeout(successModalTimerRef.current)
+                  }
+                }}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition-colors"
+              >
+                Đóng
+              </button> */}
+              <p className="text-xs text-gray-400 mt-3">Tự động đóng sau 5 giây</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -20,8 +20,6 @@ export default function Header() {
   const menuItems = [
     { key: 'products', label: 'Sản phẩm' },
     { key: 'topup', label: 'Nạp tiền' },
-
-    { key: 'about', label: 'Về chúng tôi' },
     ...(isAdmin ? [{ key: 'admin', label: 'Quản lý' }] : []),
   ]
 

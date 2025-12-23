@@ -3,7 +3,6 @@ import Header from './components/Header'
 import ProductsPage from './components/ProductsPage'
 import TopUpPage from './components/TopUpPage'
 import PurchasedPage from './components/PurchasedPage'
-import AboutPage from './components/AboutPage'
 import AdminPage from './components/AdminPage'
 import ProfilePage from './components/ProfilePage'
 
@@ -43,7 +42,6 @@ function App() {
             <Route path="/topup" element={<TopUpPage />} />
             <Route path="/purchased" element={<PurchasedPage />} />
 
-            <Route path="/about" element={<AboutPage />} />
             <Route
               path="/admin"
               element={isAdmin ? <AdminPage /> : <Navigate to="/products" replace />}

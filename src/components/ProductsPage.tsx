@@ -16,15 +16,23 @@ export default function ProductsPage() {
     category: 'all',
     priceMin: 0,
     priceMax: 10000000,
-    search: ''
+    search: '',
+    sortBy: 'default' as 'default' | 'stock' | 'bestselling'
   })
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
+  const [selectedProductGuideUrl, setSelectedProductGuideUrl] = useState<string | undefined>(undefined)
   const [selectedProductName, setSelectedProductName] = useState('')
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [purchasing, setPurchasing] = useState(false)
   const [quantity, setQuantity] = useState(1)
-  const [purchaseResult, setPurchaseResult] = useState<{ keys: string[], guideUrl?: string } | null>(null)
+  const [purchaseResult, setPurchaseResult] = useState<{ 
+    keys: string[], 
+    guideUrl?: string,
+    productName?: string,
+    variantName?: string,
+    manualDelivery?: boolean
+  } | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   useEffect(() => {
@@ -67,6 +75,55 @@ export default function ProductsPage() {
       return minPrice >= filters.priceMin && minPrice <= filters.priceMax
     })
 
+    // Sort variants within each product based on sortBy filter
+    filtered = filtered.map(product => {
+      if (!product.variants || product.variants.length === 0) return product
+      
+      let sortedVariants = [...product.variants]
+      
+      switch (filters.sortBy) {
+        case 'stock':
+          // Sort by stock quantity (highest first)
+          sortedVariants.sort((a, b) => (b.stock || 0) - (a.stock || 0))
+          break
+        case 'bestselling':
+          // Sort by total_sold (highest first)
+          sortedVariants.sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0))
+          break
+        case 'default':
+        default:
+          // Check for product-specific sort strategy
+          const strategy = product.variant_sort_strategy || 'default'
+          
+          if (strategy === 'price_asc') {
+            sortedVariants.sort((a, b) => a.price - b.price)
+          } else if (strategy === 'price_desc') {
+            sortedVariants.sort((a, b) => b.price - a.price)
+          } else if (strategy === 'duration_asc') {
+            sortedVariants.sort((a, b) => (a.duration_days || 0) - (b.duration_days || 0))
+          } else if (strategy === 'duration_desc') {
+            sortedVariants.sort((a, b) => (b.duration_days || 0) - (a.duration_days || 0))
+          } else if (strategy === 'bestselling') {
+            sortedVariants.sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0))
+          } else if (strategy === 'stock_asc') {
+            sortedVariants.sort((a, b) => (a.stock || 0) - (b.stock || 0))
+          } else if (strategy === 'stock_desc') {
+            sortedVariants.sort((a, b) => (b.stock || 0) - (a.stock || 0))
+          } else {
+            // Default: Sort by sort_order (admin defined), then by price
+            sortedVariants.sort((a, b) => {
+              if ((a.sort_order || 0) !== (b.sort_order || 0)) {
+                return (a.sort_order || 0) - (b.sort_order || 0)
+              }
+              return a.price - b.price
+            })
+          }
+          break
+      }
+      
+      return { ...product, variants: sortedVariants }
+    })
+
     setFilteredProducts(filtered)
   }
 
@@ -75,7 +132,8 @@ export default function ProductsPage() {
       category: 'all',
       priceMin: 0,
       priceMax: 10000000,
-      search: ''
+      search: '',
+      sortBy: 'default'
     })
   }
 
@@ -90,8 +148,12 @@ export default function ProductsPage() {
       return
     }
 
+    // Find the product to get guide_url
+    const product = products.find(p => p.variants?.some(v => v.id === variant.id))
+
     setSelectedVariant(variant)
     setSelectedProductName(productName)
+    setSelectedProductGuideUrl(product?.guide_url)
     setQuantity(1)
     setPurchaseResult(null)
     setShowConfirmModal(true)
@@ -167,7 +229,11 @@ export default function ProductsPage() {
         // Show purchase result
         setPurchaseResult({
           keys: data.key_values || [data.key_value],
-          guideUrl: data.guide_url || selectedVariant.guide_url
+          guideUrl: data.guide_url || selectedVariant.guide_url,
+          // Store these for copy logic
+          productName: selectedProductName,
+          variantName: selectedVariant.name,
+          manualDelivery: selectedVariant.is_manual_delivery
         })
 
         await refreshProfile()
@@ -188,6 +254,25 @@ export default function ProductsPage() {
     setQuantity(1)
   }
 
+  const handleSupportChat = () => {
+    // Logic to open support chat
+    // Assuming there's a global chat mechanism or redirect
+    // For now, we'll try to trigger the chat widget if available, or redirect to chat page
+    // Since we're in a modal, maybe we can just close modal and open chat?
+    // But the user might want to keep the modal open to copy keys.
+    // Let's assume we can dispatch an event or use a global context.
+    // For simplicity, we'll alert for now if no direct method, or try to find a chat trigger.
+    
+    // Dispatch a custom event that the layout or chat component listens to
+    window.dispatchEvent(new CustomEvent('open-chat-support', { 
+        detail: { 
+            message: `Tôi vừa mua đơn hàng: ${purchaseResult?.keys.join(', ')} (${selectedProductName} - ${selectedVariant?.name}). Nhờ hỗ trợ kích hoạt/nhận key.` 
+        } 
+    }))
+    
+    closeModal()
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -197,25 +282,50 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Sản Phẩm</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-8">Sản Phẩm</h1>
+      <div className="mb-4 sm:mb-6 text-sm text-gray-600">
+        Liên hệ hỗ trợ:&nbsp;
+        <a href="mailto:luongquocthai.thaigo.2003@gmail.com" className="text-blue-600 hover:underline">
+          luongquocthai.thaigo.2003@gmail.com
+        </a>
+      </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Danh mục
             </label>
             <select
               value={filters.category}
-              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+              onChange={(e) => {
+                const cat = e.target.value
+                setFilters({ ...filters, category: cat })
+                window.location.hash = cat === 'all' ? '' : cat
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">Tất cả danh mục</option>
               <option value="software">Phần mềm</option>
               <option value="game">Game</option>
               <option value="education">Giáo dục</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Sắp xếp gói
+            </label>
+            <select
+              value={filters.sortBy}
+              onChange={(e) => setFilters({ ...filters, sortBy: e.target.value as any })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="default">Mặc định</option>
+              <option value="stock">Số lượng tồn kho</option>
+              <option value="bestselling">Bán chạy nhất</option>
             </select>
           </div>
 
@@ -324,12 +434,12 @@ export default function ProductsPage() {
                   </div>
 
                   {/* Guide URL */}
-                  {selectedVariant.guide_url && (
+                  {(selectedVariant.guide_url || selectedProductGuideUrl) && (
                     <div className="bg-blue-50 rounded-lg p-4 mb-4 border border-blue-100">
                       <div className="flex items-center gap-2 text-blue-700">
                         <ExternalLink className="h-4 w-4" />
                         <a
-                          href={selectedVariant.guide_url}
+                          href={selectedVariant.guide_url || selectedProductGuideUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="font-semibold hover:underline"
@@ -515,7 +625,7 @@ export default function ProductsPage() {
                     {selectedVariant?.is_manual_delivery && (
                       <div className="bg-orange-50 text-orange-800 p-3 rounded-lg mb-4 text-sm border border-orange-200">
                         <p className="font-bold mb-1">👉 Hướng dẫn nhận hàng:</p>
-                        Hãy gửi mã đơn hàng bên dưới cho CSKH (Chat Support ở góc màn hình) để nhận key sản phẩm bạn nhé!
+                        Hãy gửi mã giao dịch bên dưới cho CSKH (Chat Support ở góc màn hình) để nhận key sản phẩm bạn nhé!
                       </div>
                     )}
 
@@ -548,9 +658,14 @@ export default function ProductsPage() {
                     </div>
 
                     {/* Copy All Keys */}
-                    {purchaseResult.keys.length > 1 && (
+                    {purchaseResult.keys.length > 0 && (
                       <button
-                        onClick={() => copyToClipboard(purchaseResult.keys.join('\n'), 'all-keys')}
+                        onClick={() => {
+                          const textToCopy = purchaseResult.keys.map(key => 
+                            `${key} - ${purchaseResult.productName || selectedProductName} - ${purchaseResult.variantName || selectedVariant?.name}`
+                          ).join(', ')
+                          copyToClipboard(textToCopy, 'all-keys')
+                        }}
                         className="mt-3 w-full py-2 text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center justify-center gap-2"
                       >
                         {copiedKey === 'all-keys' ? (
@@ -569,10 +684,10 @@ export default function ProductsPage() {
                   </div>
 
                   <button
-                    onClick={closeModal}
+                    onClick={handleSupportChat}
                     className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-semibold shadow-lg"
                   >
-                    Đóng
+                    Gửi mã đơn hàng đến hỗ trợ
                   </button>
                 </>
               )}

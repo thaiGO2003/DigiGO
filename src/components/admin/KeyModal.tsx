@@ -7,6 +7,7 @@ export default function KeyModal({ isOpen, onClose, variant, onSave }: KeyModalP
     const [keys, setKeys] = useState<ProductKey[]>([])
     const [newKey, setNewKey] = useState('')
     const [loading, setLoading] = useState(false)
+    const [inputMode, setInputMode] = useState<'uuid' | 'freestyle'>('uuid')
 
     const [isManualDelivery, setIsManualDelivery] = useState(false)
     const [manualStock, setManualStock] = useState(0)
@@ -76,7 +77,7 @@ export default function KeyModal({ isOpen, onClose, variant, onSave }: KeyModalP
         try {
             const { error } = await supabase.from('product_keys').insert({
                 variant_id: variant.id,
-                key_value: newKey.trim().toUpperCase()
+                key_value: inputMode === 'uuid' ? newKey.trim().toUpperCase() : newKey.trim()
             })
             if (error) throw error
             setNewKey('')
@@ -113,9 +114,9 @@ export default function KeyModal({ isOpen, onClose, variant, onSave }: KeyModalP
                     <div className="mb-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
                         <div className="flex items-center justify-between">
                             <div className="flex-1 mr-4">
-                                <h4 className="font-semibold text-orange-900">Giao hàng bằng Mã đơn</h4>
+                                <h4 className="font-semibold text-orange-900">Giao hàng bằng Mã giao dịch</h4>
                                 <p className="text-sm text-orange-800 mt-1">
-                                    Hệ thống sẽ gửi Mã đơn hàng cho khách. Bạn cần gửi key thủ công qua tin nhắn sau khi kiểm tra.
+                                    Hệ thống sẽ gửi Mã giao dịch cho khách. Bạn cần gửi key thủ công qua tin nhắn sau khi kiểm tra.
                                 </p>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
@@ -155,20 +156,50 @@ export default function KeyModal({ isOpen, onClose, variant, onSave }: KeyModalP
                         </div>
                     ) : (
                         <form onSubmit={handleAddKey} className="mb-4">
-                            <label className="block text-sm font-medium mb-1">Thêm Key mới (UUID format)</label>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="block text-sm font-medium">Thêm Key mới</label>
+                                <div className="flex bg-gray-100 rounded-lg p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setInputMode('uuid'); setNewKey('') }}
+                                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                                            inputMode === 'uuid' 
+                                            ? 'bg-white text-blue-600 shadow-sm' 
+                                            : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                    >
+                                        UUID
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setInputMode('freestyle'); setNewKey('') }}
+                                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                                            inputMode === 'freestyle' 
+                                            ? 'bg-white text-blue-600 shadow-sm' 
+                                            : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                    >
+                                        Freestyle
+                                    </button>
+                                </div>
+                            </div>
+                            
                             <div className="flex gap-2">
                                 <input
                                     type="text"
                                     value={newKey}
                                     onChange={(e) => setNewKey(e.target.value)}
-                                    placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+                                    placeholder={inputMode === 'uuid' ? "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" : "Nhập key tùy ý (Email|Pass, Text, Link...)"}
                                     className="flex-1 px-3 py-2 border rounded-md font-mono text-sm"
-                                    pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+                                    pattern={inputMode === 'uuid' ? "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}" : undefined}
                                 />
                                 <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
                                     <Plus className="h-4 w-4" />
                                 </button>
                             </div>
+                            {inputMode === 'uuid' && (
+                                <p className="text-xs text-gray-500 mt-1">Định dạng chuẩn UUID (ví dụ: 550e8400-e29b-41d4-a716-446655440000)</p>
+                            )}
                         </form>
                     )}
 

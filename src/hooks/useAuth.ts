@@ -97,7 +97,7 @@ export function useAuth() {
         if (currentSession.user.id !== lastUserId.current || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           fetchUserProfile(currentSession.user.id)
         }
-      } else {
+      } else if (event === 'SIGNED_OUT' || (event as string) === 'USER_DELETED') {
         setUser(null)
         lastUserId.current = null
         setLoading(false)

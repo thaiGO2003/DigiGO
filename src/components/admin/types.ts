@@ -1,7 +1,7 @@
 import { Product, ProductVariant, User, BankConfig, ChatMessage } from '../../lib/supabase'
 
 // Tab Types
-export type AdminTabType = 'products' | 'users' | 'chat' | 'transactions' | 'bank' | 'settings' | 'ranks'
+export type AdminTabType = 'stats' | 'products' | 'users' | 'chat' | 'transactions' | 'bank' | 'settings' | 'ranks'
 export type TransactionFilter = 'all' | 'purchase' | 'pending' | 'completed' | 'expired'
 
 // Bank list
@@ -74,12 +74,18 @@ export interface UsersTabProps {
 export interface TransactionsTabProps {
     transactions: any[]
     transactionFilter: TransactionFilter
+    dateFilter?: { start: string, end: string } | null
     onFilterChange: (filter: TransactionFilter) => void
+    onDateFilterChange?: (range: { start: string, end: string } | null) => void
     onRefresh: () => void
     onApprove: (transaction: any) => void
     onReject: (transaction: any) => void
     expandedOrders: Set<string>
     onToggleExpand: (id: string) => void
+}
+
+export interface StatsTabProps {
+    onNavigateToTransactions?: (date: string) => void
 }
 
 export interface RanksTabProps {

@@ -13,6 +13,7 @@ interface PurchaseDetail {
   product_name?: string
   duration_days?: number
   key_value?: string
+  account_info?: string
   guide_url?: string
 }
 
@@ -298,7 +299,7 @@ export default function PurchasedPage() {
                   </div>
                 )}
 
-                {purchase.status === 'completed' && !purchase.key_value && (
+                {purchase.status === 'completed' && !purchase.key_value && !purchase.account_info && (
                   <div className="bg-green-50 rounded-lg p-3 border border-green-200">
                     <p className="text-sm text-green-700 flex items-center">
                       <CheckCircle className="h-4 w-4 mr-2" />
