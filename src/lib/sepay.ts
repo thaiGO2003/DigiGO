@@ -39,6 +39,7 @@ export const sepayService = {
    */
   async verifyWebhook(_payload: any) {
     // TODO: Implement SePay webhook signature verification
+    if (_payload) return true
     return true
   }
 }

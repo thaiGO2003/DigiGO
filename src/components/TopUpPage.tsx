@@ -297,7 +297,7 @@ export default function TopUpPage() {
             Thành công
           </span>
         )
-      case 'pending':
+      case 'pending': {
         const seconds = getRemainingSeconds(transaction.created_at)
         return (
           <div className="flex flex-col items-end gap-1">
@@ -311,6 +311,7 @@ export default function TopUpPage() {
             )}
           </div>
         )
+      }
       case 'failed':
         return (
           <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-600">

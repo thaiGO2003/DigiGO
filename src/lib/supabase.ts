@@ -43,6 +43,8 @@ export type Product = {
   image_url?: string
   category: string
   guide_url?: string
+  is_hot?: boolean
+  sort_order?: number
   variant_sort_strategy?: 'default' | 'price_asc' | 'price_desc' | 'duration_asc' | 'duration_desc' | 'bestselling' | 'stock_asc' | 'stock_desc'
   created_at: string
   variants?: ProductVariant[]

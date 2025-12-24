@@ -51,8 +51,21 @@ export function useAuth() {
       setRetryCount(0)
       setLoading(false)
       setIsInitializing(false)
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error fetching profile (Attempt ${currentRetry + 1}):`, error)
+
+      // Auto-repair if profile not found (PGRST116)
+      if (error.code === 'PGRST116' && currentRetry === 0) {
+        console.log('Profile missing, attempting to repair...')
+        try {
+          await supabase.rpc('ensure_user_profile_exists')
+          // Retry immediately
+          await fetchUserProfile(userId, currentRetry + 1)
+          return
+        } catch (repairError) {
+          console.error('Failed to repair profile:', repairError)
+        }
+      }
 
       if (currentRetry < 2) {
         await new Promise(resolve => setTimeout(resolve, 2000))
@@ -148,6 +161,9 @@ export function useAuth() {
   }, [fetchUserProfile, session?.user?.id])
 
   // Refresh profile định kỳ (mỗi 10 giây để check số dư theo yêu cầu)
+  // DISABLED: Auto fetch profile periodically to reduce load.
+  // We rely on Realtime subscription or manual refresh.
+  /*
   useEffect(() => {
     if (!session?.user) return
 
@@ -157,6 +173,7 @@ export function useAuth() {
 
     return () => clearInterval(interval)
   }, [session?.user?.id, fetchUserProfile])
+  */
 
   const signIn = async (identity: string, password: string, captchaToken?: string) => {
     let emailToUse = identity

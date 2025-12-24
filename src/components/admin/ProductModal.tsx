@@ -62,7 +62,9 @@ export default function ProductModal({ isOpen, onClose, product, onSave }: Produ
             } catch (error: any) {
                 // If error is about missing column, try saving without it
                 if (error.message?.includes('variant_sort_strategy')) {
-                    const { variant_sort_strategy, ...dataWithoutSort } = formData
+                    const dataWithoutSort = Object.fromEntries(
+                        Object.entries(formData).filter(([key]) => key !== 'variant_sort_strategy')
+                    )
                     await saveData(dataWithoutSort)
                     alert('Đã lưu sản phẩm (nhưng chưa lưu cấu hình sắp xếp do chưa cập nhật DB). Vui lòng liên hệ Admin chạy lệnh SQL.')
                     onSave()

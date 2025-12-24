@@ -1,4 +1,4 @@
-import { User, Copy, Check, Calendar } from 'lucide-react'
+import { User, Copy, Check } from 'lucide-react'
 import { User as UserType } from '../../lib/supabase'
 
 interface ProfileSidebarProps {

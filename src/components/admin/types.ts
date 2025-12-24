@@ -56,6 +56,8 @@ export interface ProductsTabProps {
     onAddProduct: () => void
     onEditProduct: (product: Product) => void
     onDeleteProduct: (id: string) => void
+    onToggleHot: (product: Product) => void
+    onMoveProduct: (product: Product, direction: 'up' | 'down') => void
     onAddVariant: (product: Product) => void
     onEditVariant: (product: Product, variant: ProductVariant) => void
     onDeleteVariant: (id: string) => void

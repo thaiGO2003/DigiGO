@@ -45,6 +45,27 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
     })
   }
 
+  const [referrerName, setReferrerName] = useState<string>('Người dùng ẩn danh')
+  const [loadingReferrer, setLoadingReferrer] = useState(false)
+
+  // Fetch referrer name only if needed
+  /* Removed as per user request
+  useState(() => {
+    if (user.referred_by) {
+      setLoadingReferrer(true)
+      import('../../lib/supabase').then(({ supabase }) => {
+        supabase.from('users').select('full_name, email, username').eq('id', user.referred_by!).single()
+        .then(({ data }) => {
+          if (data) {
+            setReferrerName(data.full_name || data.username || data.email.split('@')[0])
+          }
+          setLoadingReferrer(false)
+        })
+      })
+    }
+  })
+  */
+
   if (loading) {
     return (
       <div className="flex justify-center py-8">
@@ -78,6 +99,23 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
           )}
         </div>
       </div>
+
+      {/* Referral Info for User (Who referred me?) */}
+      {user.referred_by && (
+        <div className="bg-blue-50 rounded-lg border border-blue-100 p-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-blue-100 rounded-full">
+              <Gift className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-blue-900 mb-1">Bạn đã được giới thiệu!</h3>
+              <p className="text-sm text-blue-700">
+                Bạn đang được hưởng ưu đãi giảm giá <span className="font-bold">1%</span> trọn đời cho mọi đơn hàng nhờ nhập mã giới thiệu.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* User Rank Section */}
       <div className="bg-gray-50 rounded-lg border p-6">
@@ -116,18 +154,27 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Giảm giá giới thiệu:</span>
+                <span className="text-gray-600">Giảm giá giới thiệu (Tích lũy):</span>
                 <span className="font-medium text-blue-600">{Math.min(referralStats.totalReferrals * 1, 10)}%</span>
               </div>
+              {user.referred_by && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Được giới thiệu:</span>
+                  <span className="font-medium text-green-600">1%</span>
+                </div>
+              )}
               <div className="flex justify-between pt-2 border-t mt-2">
-                <span className="text-gray-600 font-medium">Tổng giảm giá tối đa:</span>
+                <span className="text-gray-600 font-medium">Tổng giảm giá tích luỹ:</span>
                 <span className="font-bold text-purple-600">
-                  {Math.min(referralStats.totalReferrals * 1, 10) + (
+                  {Math.min(
+                    Math.min(referralStats.totalReferrals * 1, 10) + (user.referred_by ? 1 : 0) + (
                     user.rank === 'bronze' ? 2 :
                       user.rank === 'silver' ? 4 :
                         user.rank === 'gold' ? 6 :
                           user.rank === 'platinum' ? 8 :
-                            user.rank === 'diamond' ? 10 : 0)}%
+                            user.rank === 'diamond' ? 10 : 0),
+                    20
+                  )}%
                 </span>
               </div>
             </div>
@@ -251,6 +298,7 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
             <li>Chia sẻ link giới thiệu cho bạn bè</li>
             <li>Tăng 1% giảm giá trọn đời với mỗi người giới thiệu thành công</li>
             <li>Người được giới thiệu nhận ngay ưu đãi 1%</li>
+            <li>Tổng giảm giá tích lũy tối đa là 20%</li>
           </ul>
         </div>
       </div>
@@ -298,6 +346,7 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
     </div>
   )
 }
+
 
 
 

@@ -8,6 +8,8 @@ import ProfilePage from './components/ProfilePage'
 
 import PaymentReturnPage from './components/PaymentReturnPage'
 import ChatWidget from './components/ChatWidget'
+import RecentPurchasesNotification from './components/RecentPurchasesNotification'
+import SnowEffect from './components/SnowEffect'
 import { useAuth } from './hooks/useAuth'
 
 function App() {
@@ -53,6 +55,8 @@ function App() {
         </main>
 
         <ChatWidget />
+        <RecentPurchasesNotification />
+        <SnowEffect />
       </div>
     </Router>
   )

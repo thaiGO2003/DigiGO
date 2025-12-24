@@ -45,12 +45,45 @@ export default function ProductsPage() {
 
   const fetchProducts = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_products_with_variants')
+      let data: Product[] | null = null
+      let error: any = null
+
+      // Try RPC first
+      const rpcResponse = await supabase.rpc('get_products_with_variants')
+      if (rpcResponse.error) {
+        console.warn('RPC get_products_with_variants failed, falling back to standard select:', rpcResponse.error)
+        // Fallback to standard select
+        const selectResponse = await supabase
+          .from('products')
+          .select('*, variants:product_variants(*)')
+          .order('created_at', { ascending: false })
+        
+        data = selectResponse.data as Product[]
+        error = selectResponse.error
+      } else {
+        data = rpcResponse.data as Product[]
+      }
 
       if (error) throw error
-      setProducts(data || [])
+      
+      if (data) {
+        // Sort by sort_order (asc), then created_at (desc)
+        const sorted = [...data].sort((a, b) => {
+            const orderA = a.sort_order ?? 999999
+            const orderB = b.sort_order ?? 999999
+            
+            if (orderA !== orderB) {
+                return orderA - orderB
+            }
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
+        setProducts(sorted)
+      } else {
+        setProducts([])
+      }
     } catch (error) {
       console.error('Error fetching products:', error)
+      setProducts([])
     } finally {
       setLoading(false)
     }
@@ -79,7 +112,7 @@ export default function ProductsPage() {
     filtered = filtered.map(product => {
       if (!product.variants || product.variants.length === 0) return product
       
-      let sortedVariants = [...product.variants]
+      const sortedVariants = [...product.variants]
       
       switch (filters.sortBy) {
         case 'stock':
@@ -91,10 +124,9 @@ export default function ProductsPage() {
           sortedVariants.sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0))
           break
         case 'default':
-        default:
-          // Check for product-specific sort strategy
+        default: {
           const strategy = product.variant_sort_strategy || 'default'
-          
+
           if (strategy === 'price_asc') {
             sortedVariants.sort((a, b) => a.price - b.price)
           } else if (strategy === 'price_desc') {
@@ -110,7 +142,6 @@ export default function ProductsPage() {
           } else if (strategy === 'stock_desc') {
             sortedVariants.sort((a, b) => (b.stock || 0) - (a.stock || 0))
           } else {
-            // Default: Sort by sort_order (admin defined), then by price
             sortedVariants.sort((a, b) => {
               if ((a.sort_order || 0) !== (b.sort_order || 0)) {
                 return (a.sort_order || 0) - (b.sort_order || 0)
@@ -119,6 +150,7 @@ export default function ProductsPage() {
             })
           }
           break
+        }
       }
       
       return { ...product, variants: sortedVariants }
@@ -229,7 +261,7 @@ export default function ProductsPage() {
         // Show purchase result
         setPurchaseResult({
           keys: data.key_values || [data.key_value],
-          guideUrl: data.guide_url || selectedVariant.guide_url,
+          guideUrl: data.guide_url || selectedVariant.guide_url || selectedProductGuideUrl,
           // Store these for copy logic
           productName: selectedProductName,
           variantName: selectedVariant.name,
@@ -386,7 +418,7 @@ export default function ProductsPage() {
       </div>
 
       {/* Products Grid */}
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {filteredProducts.map((product) => (
           <ProductCard
             key={product.id}
@@ -683,12 +715,21 @@ export default function ProductsPage() {
                     )}
                   </div>
 
-                  <button
-                    onClick={handleSupportChat}
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-semibold shadow-lg"
-                  >
-                    Gửi mã đơn hàng đến hỗ trợ
-                  </button>
+                  {purchaseResult.manualDelivery ? (
+                    <button
+                      onClick={handleSupportChat}
+                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-semibold shadow-lg"
+                    >
+                      Gửi mã giao dịch đến hỗ trợ
+                    </button>
+                  ) : (
+                    <button
+                      onClick={closeModal}
+                      className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
+                    >
+                      Đóng
+                    </button>
+                  )}
                 </>
               )}
             </div>

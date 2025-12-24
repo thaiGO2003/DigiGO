@@ -118,8 +118,47 @@ export default function AdminPage() {
   }, [activeTab, selectedUser])
 
   const fetchProducts = async () => {
-    const { data } = await supabase.rpc('get_products_with_variants')
-    setProducts(data || [])
+    let data: Product[] | null = null
+    
+    // Try RPC first
+    const rpcResponse = await supabase.rpc('get_products_with_variants')
+    if (rpcResponse.error) {
+      console.warn('RPC get_products_with_variants failed, falling back to standard select:', rpcResponse.error)
+      const selectResponse = await supabase
+        .from('products')
+        .select('*, variants:product_variants(*)')
+        .order('created_at', { ascending: false })
+      data = selectResponse.data as Product[]
+    } else {
+      data = rpcResponse.data as Product[]
+    }
+
+    const raw = (data || []) as Product[]
+    const sorted = [...raw].sort((a, b) => {
+      const orderA = a.sort_order ?? 999999
+      const orderB = b.sort_order ?? 999999
+      if (orderA !== orderB) return orderA - orderB
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+
+    const needsBackfill = sorted.some(p => p.sort_order === null || p.sort_order === undefined)
+    if (needsBackfill && sorted.length > 0) {
+      const withOrder = sorted.map((p, index) => ({ ...p, sort_order: index }))
+      setProducts(withOrder)
+      // Only attempt to update if we can (if columns exist). 
+      // If RPC failed due to missing columns, this update might also fail, but we catch it or ignore.
+      // We don't want to crash here.
+      try {
+        await Promise.all(
+          withOrder.map(p => supabase.from('products').update({ sort_order: p.sort_order }).eq('id', p.id))
+        )
+      } catch (e) {
+        console.error('Failed to backfill sort_order:', e)
+      }
+      return
+    }
+
+    setProducts(sorted)
   }
 
   const fetchUsers = async () => {
@@ -175,6 +214,32 @@ export default function AdminPage() {
     if (!confirm('Bạn có chắc muốn xóa sản phẩm này?')) return
     await supabase.from('products').delete().eq('id', id)
     fetchProducts()
+  }
+
+  const handleToggleHot = async (product: Product) => {
+    const nextValue = !product.is_hot
+    setProducts(prev => prev.map(p => (p.id === product.id ? { ...p, is_hot: nextValue } : p)))
+    const { error } = await supabase.from('products').update({ is_hot: nextValue }).eq('id', product.id)
+    if (error) fetchProducts()
+  }
+
+  const handleMoveProduct = async (product: Product, direction: 'up' | 'down') => {
+    const currentIndex = products.findIndex(p => p.id === product.id)
+    if (currentIndex === -1) return
+    if (direction === 'up' && currentIndex === 0) return
+    if (direction === 'down' && currentIndex === products.length - 1) return
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    const targetProduct = products[targetIndex]
+
+    const newProducts = [...products]
+    newProducts[currentIndex] = { ...targetProduct, sort_order: currentIndex }
+    newProducts[targetIndex] = { ...product, sort_order: targetIndex }
+    setProducts(newProducts)
+
+    const { error } = await supabase.from('products').update({ sort_order: targetIndex }).eq('id', product.id)
+    const { error: error2 } = await supabase.from('products').update({ sort_order: currentIndex }).eq('id', targetProduct.id)
+    if (error || error2) fetchProducts()
   }
 
   const handleDeleteVariant = async (id: string) => {
@@ -290,7 +355,11 @@ export default function AdminPage() {
   const handleToggleExpand = (id: string) => {
     setExpandedOrders(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
       return next
     })
   }
@@ -352,6 +421,8 @@ export default function AdminPage() {
           onAddProduct={() => { setEditingProduct(null); setShowProductModal(true) }}
           onEditProduct={(p) => { setEditingProduct(p); setShowProductModal(true) }}
           onDeleteProduct={handleDeleteProduct}
+          onToggleHot={handleToggleHot}
+          onMoveProduct={handleMoveProduct}
           onAddVariant={(p) => { setSelectedProduct(p); setSelectedVariant(null); setShowVariantModal(true) }}
           onEditVariant={(p, v) => { setSelectedProduct(p); setSelectedVariant(v); setShowVariantModal(true) }}
           onDeleteVariant={handleDeleteVariant}

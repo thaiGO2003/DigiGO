@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { User } from '../../lib/supabase'
 
@@ -15,6 +15,7 @@ export default function ProfileUpdateForm({ user, onRefreshProfile }: ProfileUpd
   const [usernameMessage, setUsernameMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [updatingFullName, setUpdatingFullName] = useState(false)
   const [updatingUsername, setUpdatingUsername] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   const handleUpdateFullName = async () => {
     if (!fullNameInput.trim()) {
@@ -60,13 +61,40 @@ export default function ProfileUpdateForm({ user, onRefreshProfile }: ProfileUpd
     }
   }
 
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa tài khoản?\n\nHành động này sẽ xóa vĩnh viễn toàn bộ dữ liệu của bạn (lịch sử giao dịch, số dư, thông tin cá nhân) và KHÔNG THỂ hoàn tác.\n\nNhấn OK để xác nhận xóa.')) {
+      return
+    }
+    
+    const confirmText = prompt('Để xác nhận xóa tài khoản, vui lòng nhập chữ "DELETE" vào ô bên dưới:')
+    if (confirmText !== 'DELETE') {
+      if (confirmText !== null) alert('Mã xác nhận không đúng. Hủy thao tác xóa.')
+      return
+    }
+
+    setDeletingAccount(true)
+    try {
+      const { error } = await supabase.rpc('delete_own_account')
+      if (error) throw error
+      
+      await supabase.auth.signOut()
+      window.location.href = '/'
+    } catch (error: any) {
+      console.error('Error deleting account:', error)
+      alert('Không thể xóa tài khoản: ' + (error.message || 'Có lỗi xảy ra'))
+    } finally {
+      setDeletingAccount(false)
+    }
+  }
+
   const nextUsernameChange = user.last_username_change
     ? new Date(new Date(user.last_username_change).getTime() + 24 * 60 * 60 * 1000)
     : null
   const canChangeUsername = !nextUsernameChange || nextUsernameChange <= new Date()
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
+    <div className="bg-white rounded-lg shadow-sm border p-6 space-y-8">
+      {/* Update Full Name */}
       <div>
         <h3 className="text-sm font-semibold text-gray-900 mb-2">Cập nhật họ tên</h3>
         <div className="space-y-3">
@@ -80,7 +108,7 @@ export default function ProfileUpdateForm({ user, onRefreshProfile }: ProfileUpd
           <button
             onClick={handleUpdateFullName}
             disabled={updatingFullName}
-            className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-blue-700 transition-colors"
           >
             {updatingFullName && <Loader2 className="h-4 w-4 animate-spin" />}
             Lưu họ tên
@@ -94,6 +122,7 @@ export default function ProfileUpdateForm({ user, onRefreshProfile }: ProfileUpd
         </div>
       </div>
 
+      {/* Change Username */}
       <div>
         <h3 className="text-sm font-semibold text-gray-900 mb-2">Đổi tên đăng nhập</h3>
         <div className="space-y-3">
@@ -108,7 +137,7 @@ export default function ProfileUpdateForm({ user, onRefreshProfile }: ProfileUpd
           <button
             onClick={handleUpdateUsername}
             disabled={!canChangeUsername || updatingUsername}
-            className="w-full bg-emerald-600 text-white rounded-lg py-2 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full bg-emerald-600 text-white rounded-lg py-2 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-emerald-700 transition-colors"
           >
             {updatingUsername && <Loader2 className="h-4 w-4 animate-spin" />}
             {canChangeUsername ? 'Lưu tên đăng nhập' : 'Chưa thể đổi'}
@@ -126,9 +155,30 @@ export default function ProfileUpdateForm({ user, onRefreshProfile }: ProfileUpd
           )}
         </div>
       </div>
+
+      {/* Delete Account */}
+      <div className="pt-6 border-t border-gray-100">
+        <h3 className="text-sm font-semibold text-red-600 mb-2">Xóa tài khoản</h3>
+        <p className="text-xs text-gray-500 mb-3">
+          Hành động này sẽ xóa vĩnh viễn tài khoản và toàn bộ dữ liệu của bạn.
+        </p>
+        <button
+          onClick={handleDeleteAccount}
+          disabled={deletingAccount}
+          className="w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-lg py-2 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 transition-colors"
+        >
+          {deletingAccount ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+          Xóa tài khoản vĩnh viễn
+        </button>
+      </div>
     </div>
   )
 }
+
 
 
 

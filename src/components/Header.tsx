@@ -10,6 +10,17 @@ export default function Header() {
   const location = useLocation()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [initialReferralCode, setInitialReferralCode] = useState<string>('')
+
+  // Check for referral code in URL
+  useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    const ref = params.get('ref')
+    if (ref) {
+      setInitialReferralCode(ref)
+      setShowAuthModal(true)
+    }
+  })
 
   // Current page based on location path
   const currentPage = location.pathname.substring(1) || 'products'
@@ -186,6 +197,7 @@ export default function Header() {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
+        initialReferralCode={initialReferralCode}
       />
     </>
   )
