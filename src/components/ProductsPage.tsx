@@ -200,9 +200,12 @@ export default function ProductsPage() {
               user.rank === 'diamond' ? 10 : 0) : 0
 
     // Tính giảm giá từ referral (1% cho mỗi người giới thiệu, tối đa 10%)
-    const referralDiscount = user?.referral_count ? Math.min(user.referral_count * 1, 10) : 0
+    const referralCountDiscount = user?.referral_count ? Math.min(user.referral_count * 1, 10) : 0
+    
+    // Giảm thêm 1% nếu người dùng được giới thiệu
+    const referredByDiscount = user?.referred_by ? 1 : 0
 
-    const totalDiscount = Math.min(variantDiscount + rankDiscount + referralDiscount, 20)
+    const totalDiscount = Math.min(variantDiscount + rankDiscount + referralCountDiscount + referredByDiscount, 20)
     return Math.round(price * (100 - totalDiscount) / 100)
   }
 
@@ -250,11 +253,12 @@ export default function ProductsPage() {
 
       if (data?.success) {
         // Send Telegram notifications
-        const orderMsg = `<b>Đơn hàng mới!</b>\n\nUser: ${user.email}\nSản phẩm: ${selectedProductName}\nGói: ${selectedVariant.name}\nSố lượng: ${quantity}\nTổng tiền: ${data.total_price?.toLocaleString('vi-VN')}đ`
+        const unitPrice = getUnitPrice();
+        const orderMsg = `<b>Đơn hàng mới!</b>\n\n- Họ tên: ${user.full_name || user.email}\n- Sản phẩm: ${selectedProductName}\n- Gói: ${selectedVariant.name}\n- Đơn giá: ${unitPrice.toLocaleString('vi-VN')}đ\n- Số lượng: ${quantity}\n- Tổng tiền: ${data.total_price?.toLocaleString('vi-VN')}đ`
         sendTelegramNotification(orderMsg)
 
         if ((selectedVariant.stock || 0) <= quantity) {
-          const oosMsg = `<b>⚠️ CẢNH BÁO HẾT HÀNG!</b>\n\nSản phẩm: ${selectedProductName}\nGói: ${selectedVariant.name}\nKho đã hết key.`
+          const oosMsg = `<b>⚠️ CẢNH BÁO HẾT HÀNG!</b>\n\n- Sản phẩm: ${selectedProductName}\n- Gói: ${selectedVariant.name}\n- Kho đã hết key.`
           sendTelegramNotification(oosMsg)
         }
 
@@ -418,7 +422,7 @@ export default function ProductsPage() {
       </div>
 
       {/* Products Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         {filteredProducts.map((product) => (
           <ProductCard
             key={product.id}
@@ -440,7 +444,7 @@ export default function ProductsPage() {
       {/* Purchase Confirmation Modal */}
       {showConfirmModal && selectedVariant && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl">
+          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               {!purchaseResult ? (
                 <>
@@ -504,40 +508,68 @@ export default function ProductsPage() {
                     </div>
                   </div>
 
-                  {/* Discount Limit Info */}
-                  <div className="bg-blue-50 text-blue-800 px-4 py-2 rounded-lg mb-4 text-sm flex justify-between items-center">
-                    <span>Giới hạn giảm giá:</span>
-                    <span className="font-semibold">Tối đa 20%</span>
-                  </div>
+                  {/* Discount Breakdown Info */}
+                  {(() => {
+                    const variantDiscount = selectedVariant.discount_percent || 0
+                    const rankDiscount = user?.rank ?
+                      (user.rank === 'bronze' ? 2 :
+                        user.rank === 'silver' ? 4 :
+                          user.rank === 'gold' ? 6 :
+                            user.rank === 'platinum' ? 8 :
+                              user.rank === 'diamond' ? 10 : 0) : 0
+                    const referralCountDiscount = user?.referral_count ? Math.min(user.referral_count * 1, 10) : 0
+                    const referredByDiscount = user?.referred_by ? 1 : 0
+                    const accumulatedDiscount = rankDiscount + referralCountDiscount + referredByDiscount
+                    const totalDiscount = Math.min(variantDiscount + accumulatedDiscount, 20)
+
+                    return (
+                      <div className="bg-blue-50 text-blue-800 px-4 py-3 rounded-lg mb-4 text-sm space-y-1">
+                        {variantDiscount > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span>Giảm giá gói:</span>
+                            <span className="font-semibold">-{variantDiscount}%</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <span>Giảm giá tích lũy (Hạng + Giới thiệu):</span>
+                          <span className="font-semibold">-{accumulatedDiscount}%</span>
+                        </div>
+                        <div className="border-t border-blue-200 my-1 pt-1 flex justify-between items-center font-medium">
+                          <span>Tổng giảm giá áp dụng:</span>
+                          <span className="font-bold text-blue-900">-{totalDiscount}% <span className="text-xs font-normal text-blue-700">(Tối đa 20%)</span></span>
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   {/* Pricing */}
                   <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-4 mb-6 space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Đơn giá:</span>
                       <div className="text-right">
-                        {(selectedVariant.discount_percent || 0) > 0 || (user?.rank && user.rank !== 'newbie') || (user?.referral_count && user.referral_count > 0) ? (
-                          <div className="flex items-center gap-2">
+                        {(selectedVariant.discount_percent || 0) > 0 || (user?.rank && user.rank !== 'newbie') || (user?.referral_count && user.referral_count > 0) || user?.referred_by ? (
+                          <div className="flex items-center gap-2 flex-wrap justify-end">
                             <span className="text-gray-400 line-through text-sm">
                               {selectedVariant.price.toLocaleString('vi-VN')}đ
                             </span>
-                            {(selectedVariant.discount_percent || 0) > 0 && (
-                              <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs font-medium">
-                                -{selectedVariant.discount_percent}%
-                              </span>
-                            )}
-                            {user?.rank && user.rank !== 'newbie' && (
-                              <span className="bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded text-xs font-medium">
-                                -{user.rank === 'bronze' ? 2 :
+                            {(() => {
+                              const variantDiscount = selectedVariant.discount_percent || 0
+                              const rankDiscount = user?.rank ?
+                                (user.rank === 'bronze' ? 2 :
                                   user.rank === 'silver' ? 4 :
                                     user.rank === 'gold' ? 6 :
-                                      user.rank === 'platinum' ? 8 : 10}%
-                              </span>
-                            )}
-                            {user?.referral_count && user.referral_count > 0 && (
-                              <span className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded text-xs font-medium">
-                                -{Math.min(user.referral_count * 1, 10)}%
-                              </span>
-                            )}
+                                      user.rank === 'platinum' ? 8 :
+                                        user.rank === 'diamond' ? 10 : 0) : 0
+                              const referralCountDiscount = user?.referral_count ? Math.min(user.referral_count * 1, 10) : 0
+                              const referredByDiscount = user?.referred_by ? 1 : 0
+                              const totalDiscount = Math.min(variantDiscount + rankDiscount + referralCountDiscount + referredByDiscount, 20)
+                              
+                              return totalDiscount > 0 && (
+                                <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded text-xs font-medium">
+                                  -{totalDiscount}%
+                                </span>
+                              )
+                            })()}
                             <span className="font-bold text-blue-600">
                               {getUnitPrice().toLocaleString('vi-VN')}đ
                             </span>
@@ -581,23 +613,36 @@ export default function ProductsPage() {
 
                   {/* Action Buttons */}
                   <div className="flex space-x-4">
-                    <button
-                      onClick={confirmPurchase}
-                      disabled={purchasing || !canAfford()}
-                      className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg flex items-center justify-center gap-2"
-                    >
-                      {purchasing ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                          Đang xử lý...
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingCart className="h-4 w-4" />
-                          Xác nhận mua ({getTotalPrice().toLocaleString('vi-VN')}đ)
-                        </>
-                      )}
-                    </button>
+                    {user && user.balance < getTotalPrice() ? (
+                      <button
+                        onClick={() => {
+                          window.open('https://img.vietqr.io/image/MB-0352586676-compact2.png?amount=' + Math.max(10000, getTotalPrice() - user.balance) + '&addInfo=NAP%20TIEN%20DIGIGO%20' + (user.email || ''), '_blank')
+                          closeModal()
+                        }}
+                        className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-3 px-4 rounded-lg font-semibold shadow-lg flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Nạp tiền ngay (Thiếu {(getTotalPrice() - user.balance).toLocaleString('vi-VN')}đ)
+                      </button>
+                    ) : (
+                      <button
+                        onClick={confirmPurchase}
+                        disabled={purchasing || !canAfford()}
+                        className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg flex items-center justify-center gap-2"
+                      >
+                        {purchasing ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                            Đang xử lý...
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart className="h-4 w-4" />
+                            Xác nhận mua ({getTotalPrice().toLocaleString('vi-VN')}đ)
+                          </>
+                        )}
+                      </button>
+                    )}
                     <button
                       onClick={closeModal}
                       disabled={purchasing}

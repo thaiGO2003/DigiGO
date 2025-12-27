@@ -1,6 +1,6 @@
-# DigiGO E-commerce System
+# AI Nắng vàng
 
-Hệ thống thương mại điện tử DigiGO (trước đây là HOCAI Store) chuyên cung cấp các sản phẩm số như phần mềm, game, và tài khoản giáo dục. Dự án được xây dựng với React, TypeScript, Vite và Supabase.
+Hệ thống thương mại điện tử AI Nắng vàng (trực thuộc DigiGO) chuyên cung cấp các sản phẩm số như phần mềm, game, và tài khoản giáo dục. Dự án được xây dựng với React, TypeScript, Vite và Supabase.
 
 ![DigiGO Banner](https://images.pexels.com/photos/230544/pexels-photo-230544.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1)
 

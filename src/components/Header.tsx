@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { User, LogOut, Menu, X } from 'lucide-react'
+import { User, LogOut, Menu, X, Facebook } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import AuthModal from './AuthModal'
@@ -69,10 +69,10 @@ export default function Header() {
             >
               <img
                 src="/logo.png"
-                alt="DigiGO"
+                alt="AI Nắng vàng"
                 className="h-8 w-8 rounded-full object-cover mr-2"
               />
-              <span className="text-xl font-bold text-gray-900">DigiGO</span>
+              <span className="text-xl font-bold text-gray-900">AI Nắng vàng</span>
             </div>
 
             {/* Desktop Menu */}
@@ -126,6 +126,17 @@ export default function Header() {
                   alt="Zalo"
                   className="w-6 h-6"
                 />
+              </a>
+
+              {/* Facebook Button */}
+              <a
+                href="https://www.facebook.com/luan.loc.90"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden sm:flex items-center justify-center p-2 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                title="Facebook"
+              >
+                <Facebook className="w-6 h-6" />
               </a>
 
               <button
@@ -193,6 +204,11 @@ export default function Header() {
           )}
         </div>
       </header>
+
+      {/* Notification Banner */}
+      <div className="w-full bg-[#FFFF00] text-black font-bold text-sm sm:text-base text-center p-[10px] m-0">
+        Hiện tại đơn hàng Cursor phải chờ Dev gửi nên khuyến nghị mua từ 10h30 sáng đến 9h tối
+      </div>
 
       <AuthModal
         isOpen={showAuthModal}

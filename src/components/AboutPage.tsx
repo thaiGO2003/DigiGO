@@ -29,7 +29,7 @@ export default function AboutPage() {
       {/* Hero Section */}
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Chào mừng đến với DigiGO
+          Chào mừng đến với AI Nắng vàng
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
           Chúng tôi là nhà cung cấp hàng đầu các sản phẩm số chất lượng cao với 
@@ -60,11 +60,11 @@ export default function AboutPage() {
       <div className="bg-white rounded-lg shadow-sm border p-8">
         <div className="prose max-w-none">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Về DigiGO
+            Về AI Nắng vàng
           </h2>
           
           <p className="text-gray-600 mb-6">
-            DigiGO được thành lập với sứ mệnh mang đến cho khách hàng những sản phẩm 
+            AI Nắng vàng được thành lập với sứ mệnh mang đến cho khách hàng những sản phẩm 
             số chất lượng cao với giá cả hợp lý. Chúng tôi chuyên cung cấp các loại tài khoản 
             email, key phần mềm, và các gói dịch vụ đa dạng.
           </p>
@@ -90,7 +90,7 @@ export default function AboutPage() {
               <strong>Email hỗ trợ:</strong> support@digigo.online
             </p>
             <p className="text-gray-600 mb-2">
-              <strong>Website:</strong> digigo.online
+              <strong>Website:</strong> digigo.website
             </p>
             <p className="text-gray-600">
               <strong>Thời gian hỗ trợ:</strong> 24/7

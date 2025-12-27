@@ -55,6 +55,7 @@ export type ProductVariant = {
   product_id: string
   name: string
   price: number
+  cost_price?: number
   discount_percent?: number
   duration_days?: number
   description?: string
@@ -79,6 +80,7 @@ export type Transaction = {
   id: string
   user_id: string
   amount: number
+  cost_price?: number
   type: 'top_up' | 'purchase'
   status: 'pending' | 'completed' | 'failed'
   variant_id?: string

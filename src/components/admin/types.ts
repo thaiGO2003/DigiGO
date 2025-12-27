@@ -27,6 +27,7 @@ export const VIETNAM_BANKS = [
     { id: 'PGBank', name: 'PGBank', code: 'PGB' },
     { id: 'VietBank', name: 'VietBank', code: 'VIETBANK' },
     { id: 'BVB', name: 'BaoVietBank', code: 'BVB' },
+    { id: 'KienLongBank', name: 'Kienlongbank', code: 'KLB' },
 ]
 
 // Utility function
@@ -53,6 +54,7 @@ export const removeVietnameseTones = (str: string) => {
 // Props interfaces
 export interface ProductsTabProps {
     products: Product[]
+    highlightedProductId?: string | null
     onAddProduct: () => void
     onEditProduct: (product: Product) => void
     onDeleteProduct: (id: string) => void
@@ -61,16 +63,22 @@ export interface ProductsTabProps {
     onAddVariant: (product: Product) => void
     onEditVariant: (product: Product, variant: ProductVariant) => void
     onDeleteVariant: (id: string) => void
+    onMoveVariant: (product: Product, variant: ProductVariant, direction: 'up' | 'down') => void
     onManageKeys: (product: Product, variant: ProductVariant) => void
 }
 
 export interface UsersTabProps {
     users: User[]
     currentUserId?: string
+    searchTerm?: string
+    onSearchChange?: (term: string) => void
+    onRefresh?: () => void
     onAdjustBalance: (user: User) => void
     onToggleAdmin: (userId: string, currentStatus: boolean) => void
     onToggleBan: (user: User) => void
     onDeleteUser: (user: User) => void
+    onUpdateRank?: (userId: string, rank: User['rank']) => void
+    onChat?: (user: User) => void
 }
 
 export interface TransactionsTabProps {
@@ -84,10 +92,12 @@ export interface TransactionsTabProps {
     onReject: (transaction: any) => void
     expandedOrders: Set<string>
     onToggleExpand: (id: string) => void
+    onNavigateToUser?: (userId: string) => void
 }
 
 export interface StatsTabProps {
     onNavigateToTransactions?: (date: string) => void
+    onNavigateToProducts?: (productId: string) => void
 }
 
 export interface RanksTabProps {

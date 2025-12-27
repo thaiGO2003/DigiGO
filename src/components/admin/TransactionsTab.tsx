@@ -11,7 +11,8 @@ export default function TransactionsTab({
     onApprove,
     onReject,
     expandedOrders,
-    onToggleExpand
+    onToggleExpand,
+    onNavigateToUser
 }: TransactionsTabProps) {
     const [searchTerm, setSearchTerm] = React.useState('')
 
@@ -21,7 +22,19 @@ export default function TransactionsTab({
             const term = searchTerm.toLowerCase()
             const txId = tx.id.toLowerCase()
             const shortId = txId.split('-')[0]
-            if (!txId.includes(term) && !shortId.includes(term)) return false
+            
+            const matchesId = txId.includes(term) || shortId.includes(term)
+            const matchesUser = 
+                tx.users?.email?.toLowerCase().includes(term) ||
+                tx.users?.username?.toLowerCase().includes(term) ||
+                tx.users?.full_name?.toLowerCase().includes(term)
+            const matchesAmount = tx.amount.toString().includes(term)
+            const matchesNote = tx.metadata?.note?.toLowerCase().includes(term)
+            const matchesProduct = 
+                tx.product_variants?.products?.name?.toLowerCase().includes(term) ||
+                tx.product_variants?.name?.toLowerCase().includes(term)
+
+            if (!matchesId && !matchesUser && !matchesAmount && !matchesNote && !matchesProduct) return false
         }
 
         // Date Filter
@@ -157,11 +170,32 @@ export default function TransactionsTab({
                                                 )}
                                             </td>
                                             <td className="px-4 py-4 whitespace-nowrap">
-                                                <div className="text-sm font-medium text-gray-900">{tx.users?.full_name || 'N/A'}</div>
-                                                <div className="text-xs text-gray-500">{tx.users?.email}</div>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        if (onNavigateToUser && tx.user_id) {
+                                                            onNavigateToUser(tx.user_id)
+                                                        }
+                                                    }}
+                                                    className="text-left hover:bg-blue-50 rounded-lg p-1 -m-1 transition-colors cursor-pointer group"
+                                                    title="Xem người dùng"
+                                                >
+                                                    <div className="text-sm font-medium text-gray-900 group-hover:text-blue-600">{tx.users?.full_name || 'N/A'}</div>
+                                                    {tx.users?.username && (
+                                                        <div className="text-xs text-gray-400">@{tx.users.username}</div>
+                                                    )}
+                                                    <div className="text-xs text-gray-500">{tx.users?.email}</div>
+                                                </button>
                                             </td>
                                             <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                                                {tx.amount.toLocaleString('vi-VN')}đ
+                                                <div>
+                                                    <div>{tx.amount.toLocaleString('vi-VN')}đ</div>
+                                                    {tx.type === 'purchase' && (
+                                                        <div className="text-xs text-gray-400 font-normal mt-0.5">
+                                                            Giá gốc: {(tx.metadata?.original_price ?? Math.abs(tx.amount)).toLocaleString('vi-VN')}đ
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 {tx.type === 'top_up' ? (
@@ -175,7 +209,6 @@ export default function TransactionsTab({
                                                                 onClick={(e) => {
                                                                     e.stopPropagation()
                                                                     navigator.clipboard.writeText(tx.id.split('-')[0].toUpperCase())
-                                                                    alert('Đã copy mã giao dịch!')
                                                                 }}
                                                                 className="text-gray-400 hover:text-blue-600 cursor-pointer"
                                                                 title="Copy Mã giao dịch"
@@ -283,7 +316,6 @@ export default function TransactionsTab({
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation()
                                                                                     navigator.clipboard.writeText(tx.product_keys?.key_value || (tx.product_variants?.products as any)?.account_info)
-                                                                                    alert('Đã copy key!')
                                                                                 }}
                                                                                 className="text-gray-400 hover:text-blue-600 p-1 cursor-pointer transition-colors"
                                                                                 title="Copy Key"
@@ -303,7 +335,6 @@ export default function TransactionsTab({
                                                                         onClick={(e) => {
                                                                             e.stopPropagation()
                                                                             navigator.clipboard.writeText(tx.id.split('-')[0].toUpperCase())
-                                                                            alert('Đã copy mã giao dịch!')
                                                                         }}
                                                                         className="text-gray-400 hover:text-blue-600 p-1 cursor-pointer transition-colors flex-shrink-0"
                                                                         title="Copy Mã giao dịch"
@@ -319,15 +350,13 @@ export default function TransactionsTab({
                                                                 <p className="text-xs text-gray-500 mb-1">Thông tin thanh toán</p>
                                                                 <div className="space-y-1">
                                                                     <p className="text-xs sm:text-sm">
-                                                                        <span className="text-gray-500">Số tiền:</span>{' '}
+                                                                        <span className="text-gray-500">Giá gốc:</span>{' '}
+                                                                        <span className="text-gray-400 line-through">{(tx.metadata?.original_price ?? Math.abs(tx.amount)).toLocaleString('vi-VN')}đ</span>
+                                                                    </p>
+                                                                    <p className="text-xs sm:text-sm">
+                                                                        <span className="text-gray-500">Giá bán:</span>{' '}
                                                                         <span className="font-bold text-red-600">{Math.abs(tx.amount).toLocaleString('vi-VN')}đ</span>
                                                                     </p>
-                                                                    {tx.metadata?.original_price && tx.metadata.original_price !== Math.abs(tx.amount) && (
-                                                                        <p className="text-xs sm:text-sm">
-                                                                            <span className="text-gray-500">Giá gốc:</span>{' '}
-                                                                            <span className="text-gray-400 line-through">{tx.metadata.original_price.toLocaleString('vi-VN')}đ</span>
-                                                                        </p>
-                                                                    )}
                                                                     {tx.metadata?.referral_discount_applied && (
                                                                         <p className="text-xs sm:text-sm flex items-center gap-1">
                                                                             <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
@@ -420,9 +449,16 @@ export default function TransactionsTab({
                                                     : 'Thất bại'}
                                             </span>
                                         </div>
-                                        <p className="text-lg font-bold text-gray-900">
-                                            {tx.amount.toLocaleString('vi-VN')}đ
-                                        </p>
+                                        <div>
+                                            <p className="text-lg font-bold text-gray-900">
+                                                {tx.amount.toLocaleString('vi-VN')}đ
+                                            </p>
+                                            {tx.type === 'purchase' && (
+                                                <p className="text-xs text-gray-400 mt-0.5">
+                                                    Giá gốc: {(tx.metadata?.original_price ?? Math.abs(tx.amount)).toLocaleString('vi-VN')}đ
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                     {tx.status === 'pending' && !isExpired && tx.type === 'top_up' && (
                                         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -446,8 +482,22 @@ export default function TransactionsTab({
 
                                 {/* User Info */}
                                 <div className="border-t pt-3">
-                                    <p className="text-sm font-medium text-gray-900">{tx.users?.full_name || 'N/A'}</p>
-                                    <p className="text-xs text-gray-500 truncate">{tx.users?.email}</p>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            if (onNavigateToUser && tx.user_id) {
+                                                onNavigateToUser(tx.user_id)
+                                            }
+                                        }}
+                                        className="text-left hover:bg-blue-50 rounded-lg p-1 -m-1 transition-colors cursor-pointer group w-full"
+                                        title="Xem người dùng"
+                                    >
+                                        <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600">{tx.users?.full_name || 'N/A'}</p>
+                                        {tx.users?.username && (
+                                            <p className="text-xs text-gray-400">@{tx.users.username}</p>
+                                        )}
+                                        <p className="text-xs text-gray-500 truncate">{tx.users?.email}</p>
+                                    </button>
                                 </div>
 
                                 {/* Type Info */}
@@ -501,7 +551,6 @@ export default function TransactionsTab({
                                                     onClick={(e) => {
                                                         e.stopPropagation()
                                                         navigator.clipboard.writeText(tx.id.split('-')[0].toUpperCase())
-                                                        alert('Đã copy mã giao dịch!')
                                                     }}
                                                     className="text-gray-400 hover:text-blue-600 p-1 cursor-pointer transition-colors flex-shrink-0"
                                                     title="Copy Mã giao dịch"
@@ -533,7 +582,6 @@ export default function TransactionsTab({
                                                         onClick={(e) => {
                                                             e.stopPropagation()
                                                             navigator.clipboard.writeText(tx.product_keys?.key_value || (tx.product_variants?.products as any)?.account_info || (tx.metadata?.is_manual_delivery ? tx.id.split('-')[0].toUpperCase() : ''))
-                                                            alert('Đã copy key!')
                                                         }}
                                                         className="text-gray-400 hover:text-blue-600 p-1 cursor-pointer transition-colors flex-shrink-0"
                                                         title="Copy Key"
@@ -548,15 +596,13 @@ export default function TransactionsTab({
                                             <p className="text-xs text-gray-500 mb-1">Thông tin thanh toán</p>
                                             <div className="space-y-1">
                                                 <p className="text-xs">
-                                                    <span className="text-gray-500">Số tiền:</span>{' '}
+                                                    <span className="text-gray-500">Giá gốc:</span>{' '}
+                                                    <span className="text-gray-400 line-through">{(tx.metadata?.original_price ?? Math.abs(tx.amount)).toLocaleString('vi-VN')}đ</span>
+                                                </p>
+                                                <p className="text-xs">
+                                                    <span className="text-gray-500">Giá bán:</span>{' '}
                                                     <span className="font-bold text-red-600">{Math.abs(tx.amount).toLocaleString('vi-VN')}đ</span>
                                                 </p>
-                                                {tx.metadata?.original_price && tx.metadata.original_price !== Math.abs(tx.amount) && (
-                                                    <p className="text-xs">
-                                                        <span className="text-gray-500">Giá gốc:</span>{' '}
-                                                        <span className="text-gray-400 line-through">{tx.metadata.original_price.toLocaleString('vi-VN')}đ</span>
-                                                    </p>
-                                                )}
                                                 {tx.metadata?.referral_discount_applied && (
                                                     <p className="text-xs">
                                                         <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">

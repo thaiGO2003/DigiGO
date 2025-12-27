@@ -45,8 +45,7 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
     })
   }
 
-  const [referrerName, setReferrerName] = useState<string>('Người dùng ẩn danh')
-  const [loadingReferrer, setLoadingReferrer] = useState(false)
+
 
   // Fetch referrer name only if needed
   /* Removed as per user request
@@ -346,6 +345,7 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
     </div>
   )
 }
+
 
 
 

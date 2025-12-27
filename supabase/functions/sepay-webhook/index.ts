@@ -147,7 +147,7 @@ async function processTransaction(transaction: any, amount_in: number, payload: 
 
   const { data: user, error: userFetchError } = await supabaseClient
     .from('users')
-    .select('balance')
+    .select('balance, full_name, username')
     .eq('id', transaction.user_id)
     .single()
 
@@ -162,7 +162,41 @@ async function processTransaction(transaction: any, amount_in: number, payload: 
 
   console.log(`Successfully processed payment for user ${transaction.user_id}: +${amount_in}`)
 
+  // Send Telegram Notification
+  await sendTelegramNotification(user, amount_in, reference_number)
+
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
+}
+
+async function sendTelegramNotification(user: any, amount: number, reference_number: string) {
+  const token = Deno.env.get('TELEGRAM_BOT_TOKEN')
+  const chatId = Deno.env.get('TELEGRAM_CHAT_ID')
+
+  if (!token || !chatId) {
+    console.warn('Telegram config missing')
+    return
+  }
+
+  const message = `<b>💰 Khách hàng nạp tiền!</b>
+
+- Họ tên: ${user.full_name || 'N/A'}
+- Username: ${user.username || 'N/A'}
+- Mã giao dịch: ${reference_number}
+- Số tiền: ${amount.toLocaleString('vi-VN')}đ`
+
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'HTML'
+      })
+    })
+  } catch (error) {
+    console.error('Error sending Telegram notification:', error)
+  }
 }

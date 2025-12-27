@@ -146,15 +146,16 @@ export default function AuthModal({ isOpen, onClose, initialReferralCode }: Auth
     }
   }
 
-  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Removed duplicate function
-  }
+
   
   // Inside component
   const checkUsernameTimeoutRef = React.useRef<any>(null) // Use any to avoid NodeJS types issue if not installed
 
   const onUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
+    let val = e.target.value
+    // Strip '@' if present
+    val = val.replace(/@/g, '')
+    
     setUsername(val)
     
     // Reset state

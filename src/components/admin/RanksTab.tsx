@@ -1,71 +1,58 @@
-import { Users, Package } from 'lucide-react'
+import { Users, Package, Award } from 'lucide-react'
 import { RanksTabProps } from './types'
 import { User } from '../../lib/supabase'
 
 export default function RanksTab({ users, onUpdateRank }: RanksTabProps) {
+    const getRankInfo = (rank: string) => {
+        const ranks: Record<string, { label: string; discount: number; bgClass: string; textClass: string }> = {
+            newbie: { label: 'Tân binh', discount: 0, bgClass: 'bg-green-100', textClass: 'text-green-800' },
+            bronze: { label: 'Đồng', discount: 2, bgClass: 'bg-orange-100', textClass: 'text-orange-800' },
+            silver: { label: 'Bạc', discount: 4, bgClass: 'bg-gray-200', textClass: 'text-gray-800' },
+            gold: { label: 'Vàng', discount: 6, bgClass: 'bg-yellow-100', textClass: 'text-yellow-800' },
+            platinum: { label: 'Platinum', discount: 8, bgClass: 'bg-blue-100', textClass: 'text-blue-800' },
+            diamond: { label: 'Kim cương', discount: 10, bgClass: 'bg-purple-100', textClass: 'text-purple-800' },
+        }
+        return ranks[rank] || ranks.newbie
+    }
+
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-bold mb-6">Quản lý hạng người dùng</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">Quản lý hạng người dùng</h2>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
                 {/* User Ranks Overview */}
-                <div className="border rounded-lg p-6">
+                <div className="border rounded-lg p-4 sm:p-6">
                     <div className="flex items-center gap-2 mb-4">
                         <Users className="h-5 w-5 text-blue-600" />
-                        <h3 className="font-semibold text-lg">Các hạng hiện tại</h3>
+                        <h3 className="font-semibold text-base sm:text-lg">Các hạng hiện tại</h3>
                     </div>
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                            <div>
-                                <span className="font-medium text-green-600">Tân binh</span>
-                                <p className="text-sm text-gray-500">Giảm giá: 0%</p>
+                    <div className="space-y-2 sm:space-y-3">
+                        {[
+                            { rank: 'Tân binh', discount: '0%', range: 'Dưới 500K', bgClass: 'bg-green-50', textClass: 'text-green-600' },
+                            { rank: 'Đồng', discount: '2%', range: '500K - 1 triệu', bgClass: 'bg-orange-50', textClass: 'text-orange-600' },
+                            { rank: 'Bạc', discount: '4%', range: '1 - 2 triệu', bgClass: 'bg-gray-100', textClass: 'text-gray-600' },
+                            { rank: 'Vàng', discount: '6%', range: '2 - 3 triệu', bgClass: 'bg-yellow-50', textClass: 'text-yellow-600' },
+                            { rank: 'Platinum', discount: '8%', range: '3 - 5 triệu', bgClass: 'bg-blue-50', textClass: 'text-blue-600' },
+                            { rank: 'Kim cương', discount: '10%', range: 'Trên 5 triệu', bgClass: 'bg-purple-50', textClass: 'text-purple-600' },
+                        ].map((item) => (
+                            <div key={item.rank} className={`flex flex-col sm:flex-row sm:justify-between sm:items-center p-2.5 sm:p-3 ${item.bgClass} rounded-lg gap-1 sm:gap-0`}>
+                                <div>
+                                    <span className={`font-medium ${item.textClass} text-sm sm:text-base`}>{item.rank}</span>
+                                    <p className="text-xs sm:text-sm text-gray-500">Giảm giá: {item.discount}</p>
+                                </div>
+                                <span className="text-xs sm:text-sm text-gray-500">{item.range}</span>
                             </div>
-                            <span className="text-sm text-gray-500">Dưới 500K nạp</span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
-                            <div>
-                                <span className="font-medium text-orange-600">Đồng</span>
-                                <p className="text-sm text-gray-500">Giảm giá: 2%</p>
-                            </div>
-                            <span className="text-sm text-gray-500">500K - 1 triệu</span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-gray-100 rounded-lg">
-                            <div>
-                                <span className="font-medium text-gray-600">Bạc</span>
-                                <p className="text-sm text-gray-500">Giảm giá: 4%</p>
-                            </div>
-                            <span className="text-sm text-gray-500">1 - 2 triệu</span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
-                            <div>
-                                <span className="font-medium text-yellow-600">Vàng</span>
-                                <p className="text-sm text-gray-500">Giảm giá: 6%</p>
-                            </div>
-                            <span className="text-sm text-gray-500">2 - 3 triệu</span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                            <div>
-                                <span className="font-medium text-blue-600">Platinum</span>
-                                <p className="text-sm text-gray-500">Giảm giá: 8%</p>
-                            </div>
-                            <span className="text-sm text-gray-500">3 - 5 triệu</span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-                            <div>
-                                <span className="font-medium text-purple-600">Kim cương</span>
-                                <p className="text-sm text-gray-500">Giảm giá: 10%</p>
-                            </div>
-                            <span className="text-sm text-gray-500">Trên 5 triệu</span>
-                        </div>
+                        ))}
                     </div>
                 </div>
 
                 {/* Referral Commission Settings */}
-                <div className="border rounded-lg p-6">
+                <div className="border rounded-lg p-4 sm:p-6">
                     <div className="flex items-center gap-2 mb-4">
                         <Package className="h-5 w-5 text-green-600" />
-                        <h3 className="font-semibold text-lg">Cài đặt hoa hồng</h3>
+                        <h3 className="font-semibold text-base sm:text-lg">Cài đặt hoa hồng</h3>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                         <div className="p-3 bg-blue-50 rounded-lg">
                             <p className="text-sm text-blue-700 font-medium">Hoa hồng giới thiệu: 1%</p>
                             <p className="text-xs text-blue-600 mt-1">Mỗi người giới thiệu sẽ nhận 1% hoa hồng từ giao dịch của họ</p>
@@ -87,58 +74,46 @@ export default function RanksTab({ users, onUpdateRank }: RanksTabProps) {
             </div>
 
             {/* User Rank Management */}
-            <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <Users className="h-5 w-5 text-purple-600" />
+            <div className="mt-6 sm:mt-8">
+                <h3 className="text-base sm:text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Award className="h-5 w-5 text-purple-600" />
                     Quản lý hạng người dùng
                 </h3>
-                <div className="overflow-x-auto">
+
+                {/* Desktop Table */}
+                <div className="hidden lg:block overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người dùng</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người giới thiệu</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hạng hiện tại</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giảm giá</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người dùng</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giới thiệu</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hạng</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giảm giá</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {users.map((user) => {
                                 const referralCount = user.referral_count || 0
                                 const currentRank = user.rank || 'newbie'
-                                const rankDiscount = currentRank === 'bronze' ? 2 :
-                                    currentRank === 'silver' ? 4 :
-                                        currentRank === 'gold' ? 6 :
-                                            currentRank === 'platinum' ? 8 :
-                                                currentRank === 'diamond' ? 10 : 0
+                                const rankInfo = getRankInfo(currentRank)
 
                                 return (
-                                    <tr key={user.id}>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                    <tr key={user.id} className="hover:bg-gray-50">
+                                        <td className="px-4 py-4 whitespace-nowrap">
                                             <div className="text-sm font-medium text-gray-900">{user.full_name || 'N/A'}</div>
                                             <div className="text-xs text-gray-500">{user.username || ''}</div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{referralCount}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${currentRank === 'newbie' ? 'bg-green-100 text-green-800' :
-                                                currentRank === 'bronze' ? 'bg-orange-100 text-orange-800' :
-                                                    currentRank === 'silver' ? 'bg-gray-200 text-gray-800' :
-                                                        currentRank === 'gold' ? 'bg-yellow-100 text-yellow-800' :
-                                                            currentRank === 'platinum' ? 'bg-blue-100 text-blue-800' :
-                                                                'bg-purple-100 text-purple-800'
-                                                }`}>
-                                                {currentRank === 'newbie' ? 'Tân binh' :
-                                                    currentRank === 'bronze' ? 'Đồng' :
-                                                        currentRank === 'silver' ? 'Bạc' :
-                                                            currentRank === 'gold' ? 'Vàng' :
-                                                                currentRank === 'platinum' ? 'Platinum' : 'Kim cương'}
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{referralCount}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${rankInfo.bgClass} ${rankInfo.textClass}`}>
+                                                {rankInfo.label}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{rankDiscount}%</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{rankInfo.discount}%</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                                             <select
                                                 value={currentRank}
                                                 onChange={(e) => onUpdateRank(user.id, e.target.value as User['rank'])}
@@ -157,6 +132,69 @@ export default function RanksTab({ users, onUpdateRank }: RanksTabProps) {
                             })}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="lg:hidden space-y-3">
+                    {users.map((user) => {
+                        const referralCount = user.referral_count || 0
+                        const currentRank = user.rank || 'newbie'
+                        const rankInfo = getRankInfo(currentRank)
+
+                        return (
+                            <div key={user.id} className="bg-gray-50 rounded-lg border border-gray-200 p-4 space-y-3">
+                                {/* Header */}
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 truncate">{user.full_name || 'N/A'}</p>
+                                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                        {user.username && (
+                                            <p className="text-xs text-gray-400">@{user.username}</p>
+                                        )}
+                                    </div>
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${rankInfo.bgClass} ${rankInfo.textClass}`}>
+                                        {rankInfo.label}
+                                    </span>
+                                </div>
+
+                                {/* Stats */}
+                                <div className="grid grid-cols-2 gap-3 border-t pt-3">
+                                    <div>
+                                        <p className="text-xs text-gray-500">Người giới thiệu</p>
+                                        <p className="text-sm font-medium text-gray-900">{referralCount}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500">Giảm giá hạng</p>
+                                        <p className="text-sm font-medium text-gray-900">{rankInfo.discount}%</p>
+                                    </div>
+                                </div>
+
+                                {/* Action */}
+                                <div className="border-t pt-3">
+                                    <label className="block text-xs text-gray-500 mb-1">Thay đổi hạng</label>
+                                    <select
+                                        value={currentRank}
+                                        onChange={(e) => onUpdateRank(user.id, e.target.value as User['rank'])}
+                                        className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    >
+                                        <option value="newbie">Tân binh</option>
+                                        <option value="bronze">Đồng</option>
+                                        <option value="silver">Bạc</option>
+                                        <option value="gold">Vàng</option>
+                                        <option value="platinum">Platinum</option>
+                                        <option value="diamond">Kim cương</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )
+                    })}
+
+                    {users.length === 0 && (
+                        <div className="text-center py-8 bg-gray-50 rounded-lg border">
+                            <Users className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                            <p className="text-gray-500 text-sm">Không có người dùng nào</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

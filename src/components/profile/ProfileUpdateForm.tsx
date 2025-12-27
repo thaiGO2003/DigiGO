@@ -129,7 +129,7 @@ export default function ProfileUpdateForm({ user, onRefreshProfile }: ProfileUpd
           <input
             type="text"
             className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 uppercase"
-            placeholder="DIGIGO_USER"
+            placeholder="AINANGVANG_USER"
             value={usernameInput}
             onChange={(e) => setUsernameInput(e.target.value.replace(/\s+/g, '').toUpperCase())}
             disabled={!canChangeUsername}
@@ -178,6 +178,7 @@ export default function ProfileUpdateForm({ user, onRefreshProfile }: ProfileUpd
     </div>
   )
 }
+
 
 
 

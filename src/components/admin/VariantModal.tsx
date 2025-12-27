@@ -6,6 +6,7 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
     const [formData, setFormData] = useState({
         name: '',
         price: 0,
+        cost_price: 0,
         discount_percent: 0,
         duration_days: 0,
         description: '',
@@ -18,6 +19,7 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
             setFormData({
                 name: variant.name || '',
                 price: variant.price || 0,
+                cost_price: variant.cost_price || 0,
                 discount_percent: variant.discount_percent || 0,
                 duration_days: variant.duration_days || 0,
                 description: variant.description || '',
@@ -28,6 +30,7 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
             setFormData({
                 name: '',
                 price: 0,
+                cost_price: 0,
                 discount_percent: 0,
                 duration_days: 0,
                 description: '',
@@ -64,7 +67,7 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg w-full max-w-md">
+            <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
                 <form onSubmit={handleSubmit} className="p-6">
                     <h3 className="text-lg font-semibold mb-4">{variant ? 'Sửa' : 'Thêm'} gói</h3>
 
@@ -82,6 +85,18 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-1">Giá gốc (VNĐ)</label>
+                            <input
+                                type="number"
+                                value={formData.cost_price}
+                                onChange={(e) => setFormData({ ...formData, cost_price: Number(e.target.value) })}
+                                className="w-full px-3 py-2 border rounded-md"
+                                min="0"
+                                step="1000"
+                                placeholder="Giá vốn nhập hàng (để tính lãi)"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Giá bán (VNĐ)</label>
                             <input
                                 type="number"
                                 value={formData.price}
@@ -129,17 +144,6 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
                                 className="w-full px-3 py-2 border rounded-md"
                                 rows={2}
                             />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Thứ tự hiển thị</label>
-                            <input
-                                type="number"
-                                value={formData.sort_order}
-                                onChange={(e) => setFormData({ ...formData, sort_order: Number(e.target.value) })}
-                                className="w-full px-3 py-2 border rounded-md"
-                                placeholder="0"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Số nhỏ hơn sẽ hiển thị trước (nếu chọn sắp xếp mặc định)</p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-1">Link hướng dẫn riêng cho gói này (tùy chọn)</label>

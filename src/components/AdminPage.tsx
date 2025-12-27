@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { BarChart2, Package, Users, MessageCircle, CreditCard, Landmark, Award } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { BarChart2, Package, Users, MessageCircle, CreditCard, Landmark } from 'lucide-react'
 import { supabase, Product, ProductVariant, User, ChatMessage, BankConfig } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
@@ -8,7 +8,6 @@ import {
   ProductsTab,
   UsersTab,
   TransactionsTab,
-  RanksTab,
   ChatTab,
   BankTab,
   ProductModal,
@@ -36,7 +35,6 @@ export default function AdminPage() {
     { id: 'chat', label: 'Chat hỗ trợ', icon: MessageCircle },
     { id: 'transactions', label: 'Giao dịch', icon: CreditCard },
     { id: 'bank', label: 'Ngân hàng', icon: Landmark },
-    { id: 'ranks', label: 'Hạng', icon: Award },
   ]
 
   useEffect(() => {
@@ -77,6 +75,14 @@ export default function AdminPage() {
   const [editingBankConfig, setEditingBankConfig] = useState<BankConfig | null>(null)
   const [adjustingUser, setAdjustingUser] = useState<User | null>(null)
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set())
+  const [userSearchTerm, setUserSearchTerm] = useState('')
+  const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    audioRef.current = new Audio('/notification.mp3')
+    audioRef.current.volume = 0.7
+  }, [])
 
   // ============= Data Fetching =============
   useEffect(() => {
@@ -158,7 +164,19 @@ export default function AdminPage() {
       return
     }
 
-    setProducts(sorted)
+    // Sort variants for each product
+    const productsWithSortedVariants = sorted.map(p => {
+        if (!p.variants) return p
+        const sortedVariants = [...p.variants].sort((a, b) => {
+            const orderA = a.sort_order ?? 999999
+            const orderB = b.sort_order ?? 999999
+            if (orderA !== orderB) return orderA - orderB
+            return a.price - b.price
+        })
+        return { ...p, variants: sortedVariants }
+    })
+
+    setProducts(productsWithSortedVariants)
   }
 
   const fetchUsers = async () => {
@@ -178,6 +196,11 @@ export default function AdminPage() {
       if (!acc.find((u: any) => u.id === msg.user_id) && userData) acc.push(userData)
       return acc
     }, []) || []
+
+    if (selectedUser && !uniqueUsers.find((u: any) => u.id === selectedUser.id)) {
+      uniqueUsers.unshift(selectedUser)
+    }
+    
     setChatUsers(uniqueUsers)
   }
 
@@ -190,7 +213,13 @@ export default function AdminPage() {
     const channel = supabase
       .channel(`admin-chat:${userId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `user_id=eq.${userId}` },
-        (payload) => setMessages(prev => [...prev, payload.new as ChatMessage])
+        (payload) => {
+          const newMsg = payload.new as ChatMessage
+          setMessages(prev => [...prev, newMsg])
+          if (!newMsg.is_admin) {
+             audioRef.current?.play().catch((err: any) => console.log('Audio play failed:', err))
+          }
+        }
       )
       .subscribe()
     return () => { supabase.removeChannel(channel) }
@@ -199,7 +228,7 @@ export default function AdminPage() {
   const fetchTransactions = async () => {
     const { data } = await supabase
       .from('transactions')
-      .select('*, users(email, full_name, balance, is_admin), product_variants(name, products(*)), product_keys(*)')
+      .select('*, users(email, full_name, username, balance, is_admin), product_variants(name, products(*)), product_keys(*)')
       .order('created_at', { ascending: false })
     setTransactions(data || [])
   }
@@ -240,6 +269,61 @@ export default function AdminPage() {
     const { error } = await supabase.from('products').update({ sort_order: targetIndex }).eq('id', product.id)
     const { error: error2 } = await supabase.from('products').update({ sort_order: currentIndex }).eq('id', targetProduct.id)
     if (error || error2) fetchProducts()
+  }
+
+  const handleMoveVariant = async (product: Product, variant: ProductVariant, direction: 'up' | 'down') => {
+    if (!product.variants) return
+
+    // 1. Sort variants exactly how they are displayed in UI to find correct index
+    const variants = [...product.variants].sort((a, b) => {
+        const orderA = a.sort_order ?? 999999
+        const orderB = b.sort_order ?? 999999
+        if (orderA !== orderB) return orderA - orderB
+        return a.price - b.price
+    })
+
+    const currentIndex = variants.findIndex(v => v.id === variant.id)
+    
+    if (currentIndex === -1) return
+    if (direction === 'up' && currentIndex === 0) return
+    if (direction === 'down' && currentIndex === variants.length - 1) return
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    
+    // 2. Calculate new sort_order for ALL variants (re-index to 0, 1, 2...)
+    // This handles the swap AND fixes any missing/null sort_orders
+    const updates = variants.map((v, idx) => {
+        let newSortOrder = idx
+        if (idx === currentIndex) newSortOrder = targetIndex
+        else if (idx === targetIndex) newSortOrder = currentIndex
+        
+        return {
+            id: v.id,
+            sort_order: newSortOrder
+        }
+    })
+
+    // 3. Optimistic Update (Update UI immediately)
+    const updatedVariants = variants.map(v => {
+        const update = updates.find(u => u.id === v.id)
+        return update ? { ...v, sort_order: update.sort_order } : v
+    }).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+
+    setProducts(prev => prev.map(p => 
+        p.id === product.id ? { ...p, variants: updatedVariants } : p
+    ))
+
+    // 4. Execute DB updates in background
+    try {
+        await Promise.all(updates.map(update => 
+            supabase.from('product_variants').update({ sort_order: update.sort_order }).eq('id', update.id)
+        ))
+    } catch (error) {
+        console.error('Error updating variant order:', error)
+        fetchProducts() // Revert/Refresh on error
+    }
+    
+    fetchProducts() // Fetch to ensure consistency
   }
 
   const handleDeleteVariant = async (id: string) => {
@@ -364,6 +448,29 @@ export default function AdminPage() {
     })
   }
 
+  const handleChatWithUser = (user: User) => {
+    setSelectedUser(user)
+    setActiveTab('chat')
+    window.location.hash = 'chat'
+  }
+
+  const handleNavigateToUser = (userId: string) => {
+    setUserSearchTerm('')
+    setActiveTab('users')
+    window.location.hash = 'users'
+    // Scroll to user after a short delay to allow tab switch
+    setTimeout(() => {
+      const userElement = document.getElementById(`user-${userId}`)
+      if (userElement) {
+        userElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        userElement.classList.add('ring-2', 'ring-blue-500')
+        setTimeout(() => {
+          userElement.classList.remove('ring-2', 'ring-blue-500')
+        }, 2000)
+      }
+    }, 100)
+  }
+
   // ============= Render =============
   if (!isAdmin) {
     return (
@@ -386,21 +493,23 @@ export default function AdminPage() {
 
       {/* Tab Navigation */}
       <div className="mb-4 sm:mb-8 border-b border-gray-200">
-        <nav className="-mb-px flex overflow-x-auto scrollbar-hide space-x-2 sm:space-x-8">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => handleTabClick(tab.id as AdminTabType)}
-              className={`py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1 sm:space-x-2 whitespace-nowrap cursor-pointer transition-colors ${
-                activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <tab.icon className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span>{tab.label}</span>
-            </button>
-          ))}
+        <nav className="-mb-px flex overflow-x-auto scrollbar-hide pb-px">
+          <div className="flex space-x-1 sm:space-x-2 min-w-max px-1">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => handleTabClick(tab.id as AdminTabType)}
+                className={`py-2 px-2.5 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1 sm:space-x-2 whitespace-nowrap cursor-pointer transition-colors rounded-t-lg ${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <tab.icon className="h-4 w-4 flex-shrink-0" />
+                <span className="hidden xs:inline sm:inline">{tab.label}</span>
+              </button>
+            ))}
+          </div>
         </nav>
       </div>
 
@@ -412,12 +521,18 @@ export default function AdminPage() {
             setActiveTab('transactions')
             window.location.hash = 'transactions'
           }}
+          onNavigateToProducts={(productId) => {
+            setHighlightedProductId(productId)
+            setActiveTab('products')
+            window.location.hash = 'products'
+          }}
         />
       )}
 
       {activeTab === 'products' && (
         <ProductsTab
           products={products}
+          highlightedProductId={highlightedProductId}
           onAddProduct={() => { setEditingProduct(null); setShowProductModal(true) }}
           onEditProduct={(p) => { setEditingProduct(p); setShowProductModal(true) }}
           onDeleteProduct={handleDeleteProduct}
@@ -426,6 +541,7 @@ export default function AdminPage() {
           onAddVariant={(p) => { setSelectedProduct(p); setSelectedVariant(null); setShowVariantModal(true) }}
           onEditVariant={(p, v) => { setSelectedProduct(p); setSelectedVariant(v); setShowVariantModal(true) }}
           onDeleteVariant={handleDeleteVariant}
+          onMoveVariant={handleMoveVariant}
           onManageKeys={(p, v) => { setSelectedProduct(p); setSelectedVariant(v); setShowKeyModal(true) }}
         />
       )}
@@ -434,10 +550,15 @@ export default function AdminPage() {
         <UsersTab
           users={users}
           currentUserId={user?.id}
+          searchTerm={userSearchTerm}
+          onSearchChange={setUserSearchTerm}
+          onRefresh={fetchUsers}
           onAdjustBalance={(u) => { setAdjustingUser(u); setShowAdjustBalanceModal(true) }}
           onToggleAdmin={handleToggleAdmin}
           onToggleBan={handleToggleBan}
           onDeleteUser={handleDeleteUser}
+          onUpdateRank={handleUpdateRank}
+          onChat={handleChatWithUser}
         />
       )}
 
@@ -453,11 +574,8 @@ export default function AdminPage() {
           onReject={handleRejectTransaction}
           expandedOrders={expandedOrders}
           onToggleExpand={handleToggleExpand}
+          onNavigateToUser={handleNavigateToUser}
         />
-      )}
-
-      {activeTab === 'ranks' && (
-        <RanksTab users={users} onUpdateRank={handleUpdateRank} />
       )}
 
       {activeTab === 'chat' && (

@@ -3,7 +3,6 @@ export { default as StatsTab } from './StatsTab'
 export { default as ProductsTab } from './ProductsTab'
 export { default as UsersTab } from './UsersTab'
 export { default as TransactionsTab } from './TransactionsTab'
-export { default as RanksTab } from './RanksTab'
 export { default as ChatTab } from './ChatTab'
 export { default as BankTab } from './BankTab'
 

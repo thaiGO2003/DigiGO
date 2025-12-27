@@ -3,16 +3,18 @@ import { MessageCircle, X, Send, User } from 'lucide-react'
 import { supabase, ChatMessage } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { sendTelegramNotification } from '../lib/telegram'
+import { useMobileKeyboardFix } from '../hooks/useMobileKeyboardFix'
 import AuthModal from './AuthModal'
 
 export default function ChatWidget() {
+  useMobileKeyboardFix() // Activate keyboard fix hook
   const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
+ const [unreadCount, setUnreadCount] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -40,7 +42,8 @@ export default function ChatWidget() {
 
   useEffect(() => {
     // Create notification sound
-    audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2i78OeeSwkNUKrkwXkqBSh+zPLaizsKEle06umrVhgLUKXh8bllGgU2jdXxxn0tBSh+zvHajzsKEla56++lWRgLUKHk8L1nHwU3i9bwxn4tBSd+zfHYjTsKElW36+ypWxkLT6Hk7sBoHwc5jNXxxX0tBSZ/zPHWjzoKEVa15++pWxkLTqDl7cBpIQc5i9XwxH4sBSV/y/HWjjoKEFS05O+qXRkLTaDl7L9qIQc5i9TwxH4sBCV/y/HWjToKEVS04++rXRkLTKDl7L9qIQc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkLTKDl675rIAc5i9TwxH0rBSR/y/HWjToKD1S04e+rXhkL')
+    audioRef.current = new Audio('/notification.mp3')
+    audioRef.current.volume = 0.7
   }, [])
 
   const sendText = async (text: string) => {
@@ -66,8 +69,7 @@ export default function ChatWidget() {
 
       // Send Telegram notification if user is not admin
       if (!user.is_admin) {
-        const userIdentifier = user.username || user.full_name || user.email
-        const telegramMsg = `<b>Tin nhắn mới từ khách hàng:</b>\n\nUser: ${userIdentifier}\nNội dung: ${text.trim()}`
+        const telegramMsg = `<b>Tin nhắn mới từ khách hàng:</b>\n\n- Username: ${user.username || 'N/A'}\n- Họ tên: ${user.full_name || 'N/A'}\n- Nội dung: ${text.trim()}`
         sendTelegramNotification(telegramMsg)
       }
 
@@ -87,6 +89,23 @@ export default function ChatWidget() {
         // Auto send if logged in, otherwise pre-fill
         if (user) {
           await sendText(e.detail.message)
+          
+          // Check if message is a manual delivery order request
+          // "Tôi vừa mua đơn hàng: ..."
+          if (e.detail.message.startsWith('Tôi vừa mua đơn hàng:')) {
+            // Send auto reply after 1 second
+            setTimeout(async () => {
+                try {
+                    await supabase.from('chat_messages').insert({
+                        user_id: user.id,
+                        message: 'Bác hãy chờ em tầm 5-10p ạ',
+                        is_admin: true
+                    })
+                } catch (error) {
+                    console.error('Error sending auto reply:', error)
+                }
+            }, 1000)
+          }
         } else {
           setNewMessage(e.detail.message)
           setShowAuthModal(true)
@@ -109,7 +128,17 @@ export default function ChatWidget() {
         .order('created_at', { ascending: true })
 
       if (error) throw error
-      setMessages(data || [])
+      
+      const newMessages = data || []
+      setMessages(prev => {
+        // Only update if messages have changed to avoid auto-scroll
+        if (prev.length === newMessages.length && 
+            prev.length > 0 && 
+            prev[prev.length - 1].id === newMessages[newMessages.length - 1].id) {
+          return prev
+        }
+        return newMessages
+      })
     } catch (error) {
       console.error('Error fetching messages:', error)
     }
@@ -130,7 +159,11 @@ export default function ChatWidget() {
         },
         (payload) => {
           const newMsg = payload.new as ChatMessage
-          setMessages(prev => [...prev, newMsg])
+          setMessages(prev => {
+            // Check if message already exists to avoid duplicates
+            if (prev.some(m => m.id === newMsg.id)) return prev
+            return [...prev, newMsg]
+          })
 
           // If message from admin and chat is closed, play sound and increase unread
           if (newMsg.is_admin && !isOpen) {
@@ -169,8 +202,7 @@ export default function ChatWidget() {
 
       // Send Telegram notification if user is not admin
       if (!user.is_admin) {
-        const userIdentifier = user.username || user.full_name || user.email
-        const telegramMsg = `<b>Tin nhắn mới từ khách hàng:</b>\n\nUser: ${userIdentifier}\nNội dung: ${newMessage.trim()}`
+        const telegramMsg = `<b>Tin nhắn mới từ khách hàng:</b>\n\n- Username: ${user.username || 'N/A'}\n- Họ tên: ${user.full_name || 'N/A'}\n- Nội dung: ${newMessage.trim()}`
         sendTelegramNotification(telegramMsg)
       }
 
@@ -191,6 +223,16 @@ export default function ChatWidget() {
       setShowAuthModal(true)
       return
     }
+
+    // Unlock notification sound on first user interaction (autoplay policy)
+    if (!isOpen && audioRef.current) {
+      audioRef.current.currentTime = 0
+      audioRef.current.play().then(() => {
+        audioRef.current?.pause()
+        if (audioRef.current) audioRef.current.currentTime = 0
+      }).catch(() => {})
+    }
+
     setIsOpen(!isOpen)
     if (!isOpen) {
       setUnreadCount(0) // Reset unread when opening chat
@@ -218,7 +260,13 @@ export default function ChatWidget() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-20 right-6 w-80 h-96 bg-white rounded-lg shadow-xl border z-40 flex flex-col">
+        <div 
+          className="fixed right-6 w-80 bg-white rounded-lg shadow-xl border z-40 flex flex-col"
+          style={{
+            height: '24rem', // 96 = 24rem
+            bottom: '5rem' // 20 = 5rem
+          }}
+        >
           {/* Header */}
           <div className="bg-blue-600 text-white p-4 rounded-t-lg">
             <h3 className="font-semibold">Hỗ trợ khách hàng</h3>
