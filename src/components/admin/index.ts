@@ -5,6 +5,8 @@ export { default as UsersTab } from './UsersTab'
 export { default as TransactionsTab } from './TransactionsTab'
 export { default as ChatTab } from './ChatTab'
 export { default as BankTab } from './BankTab'
+export { default as UtilitiesTab } from './UtilitiesTab'
+export { default as ImportTab } from './ImportTab'
 
 // Modal Components
 export { default as ProductModal } from './ProductModal'

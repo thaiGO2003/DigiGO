@@ -192,7 +192,7 @@ export default function ProductModal({ isOpen, onClose, product, onSave }: Produ
                             <p className="text-xs text-gray-500 mt-1">Cấu hình này sẽ ghi đè cách sắp xếp mặc định khi hiển thị cho người dùng.</p>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium mb-1">Link hướng dẫn cài đặt (Google Doc)</label>
+                            <label className="block text-sm font-medium mb-1">Link hướng dẫn cài đặt</label>
                             <input
                                 type="text"
                                 value={formData.guide_url}

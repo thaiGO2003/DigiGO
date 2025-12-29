@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Search, RotateCcw, ShoppingCart, Plus, Minus, ExternalLink, Copy, Check, Key } from 'lucide-react'
 import { supabase, Product, ProductVariant } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { sendTelegramNotification } from '../lib/telegram'
 import AuthModal from './AuthModal'
+import { useDiscounts } from '../hooks/useDiscounts'
 
 import ProductCard from './ProductCard'
 
 export default function ProductsPage() {
+  const navigate = useNavigate()
   const { user, refreshProfile } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
@@ -34,6 +37,7 @@ export default function ProductsPage() {
     manualDelivery?: boolean
   } | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const { computePercent, getUnitPrice: calcUnitPrice } = useDiscounts()
 
   useEffect(() => {
     fetchProducts()
@@ -191,27 +195,9 @@ export default function ProductsPage() {
     setShowConfirmModal(true)
   }
 
-  const calculatePriceWithRank = (price: number, variantDiscount: number = 0) => {
-    const rankDiscount = user?.rank ?
-      (user.rank === 'bronze' ? 2 :
-        user.rank === 'silver' ? 4 :
-          user.rank === 'gold' ? 6 :
-            user.rank === 'platinum' ? 8 :
-              user.rank === 'diamond' ? 10 : 0) : 0
-
-    // Tính giảm giá từ referral (1% cho mỗi người giới thiệu, tối đa 10%)
-    const referralCountDiscount = user?.referral_count ? Math.min(user.referral_count * 1, 10) : 0
-    
-    // Giảm thêm 1% nếu người dùng được giới thiệu
-    const referredByDiscount = user?.referred_by ? 1 : 0
-
-    const totalDiscount = Math.min(variantDiscount + rankDiscount + referralCountDiscount + referredByDiscount, 20)
-    return Math.round(price * (100 - totalDiscount) / 100)
-  }
-
   const getUnitPrice = () => {
     if (!selectedVariant) return 0
-    return calculatePriceWithRank(selectedVariant.price, selectedVariant.discount_percent || 0)
+    return calcUnitPrice(user, selectedVariant)
   }
 
   const getTotalPrice = () => {
@@ -254,12 +240,15 @@ export default function ProductsPage() {
       if (data?.success) {
         // Send Telegram notifications
         const unitPrice = getUnitPrice();
-        const orderMsg = `<b>Đơn hàng mới!</b>\n\n- Họ tên: ${user.full_name || user.email}\n- Sản phẩm: ${selectedProductName}\n- Gói: ${selectedVariant.name}\n- Đơn giá: ${unitPrice.toLocaleString('vi-VN')}đ\n- Số lượng: ${quantity}\n- Tổng tiền: ${data.total_price?.toLocaleString('vi-VN')}đ`
-        sendTelegramNotification(orderMsg)
+        const username = user.username || 'N/A'
+        const fullName = user.full_name || user.email || 'N/A'
+
+        const orderMsg = `<b>Đơn hàng mới!</b>\n\n- Họ tên: ${fullName}\n- Username: ${username}\n- Sản phẩm: ${selectedProductName}\n- Gói: ${selectedVariant.name}\n- Đơn giá: ${unitPrice.toLocaleString('vi-VN')}đ\n- Số lượng: ${quantity}\n- Tổng tiền: ${data.total_price?.toLocaleString('vi-VN')}đ`
+        sendTelegramNotification(orderMsg, { username, full_name: fullName })
 
         if ((selectedVariant.stock || 0) <= quantity) {
           const oosMsg = `<b>⚠️ CẢNH BÁO HẾT HÀNG!</b>\n\n- Sản phẩm: ${selectedProductName}\n- Gói: ${selectedVariant.name}\n- Kho đã hết key.`
-          sendTelegramNotification(oosMsg)
+          sendTelegramNotification(oosMsg) // System notification, user info not critical here but can pass if needed
         }
 
         // Show purchase result
@@ -460,10 +449,16 @@ export default function ProductsPage() {
                       <span className="font-semibold text-gray-900">{selectedProductName}</span>
                     </p>
                     <p className="text-gray-600 mt-1">
-                      <span className="text-gray-500">Gói:</span>{' '}
-                      <span className="font-semibold text-gray-900">{selectedVariant.name}</span>
-                    </p>
-                    <p className="text-gray-600 mt-1">
+                  <span className="text-gray-500">Gói:</span>{' '}
+                  <span className="font-semibold text-gray-900">{selectedVariant.name}</span>
+                </p>
+                <p className="text-gray-600 mt-1">
+                  <span className="text-gray-500">Thời hạn:</span>{' '}
+                  <span className="font-semibold text-gray-900">
+                    {(selectedVariant.duration_days || 0) === 0 ? 'Vĩnh viễn' : `${selectedVariant.duration_days} ngày`}
+                  </span>
+                </p>
+                <p className="text-gray-600 mt-1">
                       <span className="text-gray-500">Còn lại:</span>{' '}
                       <span className="font-semibold text-orange-600">{selectedVariant.stock || 0} sản phẩm</span>
                     </p>
@@ -510,17 +505,10 @@ export default function ProductsPage() {
 
                   {/* Discount Breakdown Info */}
                   {(() => {
-                    const variantDiscount = selectedVariant.discount_percent || 0
-                    const rankDiscount = user?.rank ?
-                      (user.rank === 'bronze' ? 2 :
-                        user.rank === 'silver' ? 4 :
-                          user.rank === 'gold' ? 6 :
-                            user.rank === 'platinum' ? 8 :
-                              user.rank === 'diamond' ? 10 : 0) : 0
-                    const referralCountDiscount = user?.referral_count ? Math.min(user.referral_count * 1, 10) : 0
-                    const referredByDiscount = user?.referred_by ? 1 : 0
-                    const accumulatedDiscount = rankDiscount + referralCountDiscount + referredByDiscount
-                    const totalDiscount = Math.min(variantDiscount + accumulatedDiscount, 20)
+                    const { breakdown, integratedPercent, buyerPercent } = computePercent(user, selectedVariant)
+                    const accumulatedDiscount = breakdown.rankDiscount + breakdown.referralCountDiscount
+                    const variantDiscount = breakdown.variantDiscount
+                    const totalDiscount = integratedPercent
 
                     return (
                       <div className="bg-blue-50 text-blue-800 px-4 py-3 rounded-lg mb-4 text-sm space-y-1">
@@ -531,13 +519,19 @@ export default function ProductsPage() {
                           </div>
                         )}
                         <div className="flex justify-between items-center">
-                          <span>Giảm giá tích lũy (Hạng + Giới thiệu):</span>
+                          <span>Giảm giá tích lũy (Hạng + Tích lũy giới thiệu):</span>
                           <span className="font-semibold">-{accumulatedDiscount}%</span>
                         </div>
                         <div className="border-t border-blue-200 my-1 pt-1 flex justify-between items-center font-medium">
-                          <span>Tổng giảm giá áp dụng:</span>
+                          <span>Tổng giảm giá tích lũy:</span>
                           <span className="font-bold text-blue-900">-{totalDiscount}% <span className="text-xs font-normal text-blue-700">(Tối đa 20%)</span></span>
                         </div>
+                        {buyerPercent > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span>Giảm thêm (được giới thiệu):</span>
+                            <span className="font-semibold">-{buyerPercent}%</span>
+                          </div>
+                        )}
                       </div>
                     )
                   })()}
@@ -553,16 +547,8 @@ export default function ProductsPage() {
                               {selectedVariant.price.toLocaleString('vi-VN')}đ
                             </span>
                             {(() => {
-                              const variantDiscount = selectedVariant.discount_percent || 0
-                              const rankDiscount = user?.rank ?
-                                (user.rank === 'bronze' ? 2 :
-                                  user.rank === 'silver' ? 4 :
-                                    user.rank === 'gold' ? 6 :
-                                      user.rank === 'platinum' ? 8 :
-                                        user.rank === 'diamond' ? 10 : 0) : 0
-                              const referralCountDiscount = user?.referral_count ? Math.min(user.referral_count * 1, 10) : 0
-                              const referredByDiscount = user?.referred_by ? 1 : 0
-                              const totalDiscount = Math.min(variantDiscount + rankDiscount + referralCountDiscount + referredByDiscount, 20)
+                              const { integratedPercent, buyerPercent } = computePercent(user, selectedVariant)
+                              const totalDiscount = integratedPercent + (buyerPercent > 0 ? buyerPercent : 0)
                               
                               return totalDiscount > 0 && (
                                 <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded text-xs font-medium">
@@ -616,7 +602,8 @@ export default function ProductsPage() {
                     {user && user.balance < getTotalPrice() ? (
                       <button
                         onClick={() => {
-                          window.open('https://img.vietqr.io/image/MB-0352586676-compact2.png?amount=' + Math.max(10000, getTotalPrice() - user.balance) + '&addInfo=NAP%20TIEN%20DIGIGO%20' + (user.email || ''), '_blank')
+                          const amountNeeded = Math.max(10000, getTotalPrice() - user.balance)
+                          navigate(`/topup?amount=${amountNeeded}`)
                           closeModal()
                         }}
                         className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-3 px-4 rounded-lg font-semibold shadow-lg flex items-center justify-center gap-2 transition-colors"

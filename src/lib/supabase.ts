@@ -98,6 +98,18 @@ export type ChatMessage = {
   created_at: string
 }
 
+export type Program = {
+  id: string
+  title: string
+  description?: string
+  source_url: string
+  download_url: string
+  is_active: boolean
+  view_count: number
+  download_count: number
+  created_at: string
+}
+
 export type BankConfig = {
   id: string
   bank_id: string

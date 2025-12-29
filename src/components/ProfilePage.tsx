@@ -134,28 +134,11 @@ export default function ProfilePage() {
     if (!user) return
     setReferralLoading(true)
     try {
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('id, email, full_name, created_at')
-        .eq('referred_by', user.id)
-        .order('created_at', { ascending: false })
-      if (usersError) throw usersError
-      setReferredUsers(usersData || [])
-
-      const { data: earningsData, error: earningsError } = await supabase
-        .from('referral_earnings')
-        .select('amount, created_at')
-        .eq('referrer_id', user.id)
-      if (earningsError) throw earningsError
-
-      const totalEarnings = (earningsData || []).reduce((sum, e) => sum + e.amount, 0)
-      const now = new Date()
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      const monthlyEarnings = (earningsData || [])
-        .filter(e => new Date(e.created_at) >= firstDayOfMonth)
-        .reduce((sum, e) => sum + e.amount, 0)
-
-      setReferralStats({ totalReferrals: usersData?.length || 0, monthlyEarnings, totalEarnings })
+      const { data, error } = await supabase.rpc('get_referral_stats')
+      if (error) throw error
+      const stats = data as { totalReferrals: number; monthlyEarnings: number; totalEarnings: number; users: ReferredUser[] }
+      setReferralStats({ totalReferrals: stats.totalReferrals || 0, monthlyEarnings: stats.monthlyEarnings || 0, totalEarnings: stats.totalEarnings || 0 })
+      setReferredUsers((stats.users || []) as any)
     } catch (error) {
       console.error('Error fetching referral data:', error)
     } finally {

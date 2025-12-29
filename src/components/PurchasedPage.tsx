@@ -176,7 +176,9 @@ export default function PurchasedPage() {
                       </h3>
                       <p className="text-sm text-gray-600">
                         {purchase.variant_name}
-                        {purchase.duration_days && ` - ${purchase.duration_days} ngày`}
+                        {(purchase.duration_days || 0) === 0 
+                          ? ' - Vĩnh viễn' 
+                          : ` - ${purchase.duration_days} ngày`}
                       </p>
                       <div className="flex items-center space-x-1 text-xs text-gray-500 mt-1">
                         <Calendar className="h-3 w-3" />

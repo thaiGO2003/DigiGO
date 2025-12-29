@@ -4,6 +4,7 @@ import ProductsPage from './components/ProductsPage'
 import TopUpPage from './components/TopUpPage'
 import PurchasedPage from './components/PurchasedPage'
 import AdminPage from './components/AdminPage'
+import UtilitiesPage from './components/UtilitiesPage'
 import ProfilePage from './components/ProfilePage'
 
 import PaymentReturnPage from './components/PaymentReturnPage'
@@ -11,9 +12,16 @@ import ChatWidget from './components/ChatWidget'
 import RecentPurchasesNotification from './components/RecentPurchasesNotification'
 import SnowEffect from './components/SnowEffect'
 import { useAuth } from './hooks/useAuth'
+import { useEffect } from 'react'
+import { setupAntiDebug } from './lib/antiDebug'
 
 function App() {
   const { user, loading, isRetrying, retryCount } = useAuth()
+  
+  useEffect(() => {
+    const cleanup = setupAntiDebug()
+    return () => { cleanup && cleanup() }
+  }, [])
 
   // Check if user is admin
   const isAdmin = user?.email?.toLowerCase() === 'luongquocthai.thaigo.2003@gmail.com' || user?.is_admin
@@ -48,6 +56,7 @@ function App() {
               path="/admin"
               element={isAdmin ? <AdminPage /> : <Navigate to="/products" replace />}
             />
+            <Route path="/utilities" element={<UtilitiesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/payment-return" element={<PaymentReturnPage />} />
             <Route path="*" element={<Navigate to="/products" replace />} />

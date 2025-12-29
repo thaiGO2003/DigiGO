@@ -1,7 +1,7 @@
 import { Product, ProductVariant, User, BankConfig, ChatMessage } from '../../lib/supabase'
 
 // Tab Types
-export type AdminTabType = 'stats' | 'products' | 'users' | 'chat' | 'transactions' | 'bank' | 'settings' | 'ranks'
+export type AdminTabType = 'stats' | 'products' | 'users' | 'chat' | 'transactions' | 'bank' | 'settings' | 'ranks' | 'utilities' | 'import'
 export type TransactionFilter = 'all' | 'purchase' | 'pending' | 'completed' | 'expired'
 
 // Bank list
@@ -65,6 +65,8 @@ export interface ProductsTabProps {
     onDeleteVariant: (id: string) => void
     onMoveVariant: (product: Product, variant: ProductVariant, direction: 'up' | 'down') => void
     onManageKeys: (product: Product, variant: ProductVariant) => void
+    onDuplicateVariant: (product: Product, variant: ProductVariant) => void
+    onReorderProducts: (dragProductId: string, targetIndex: number) => void
 }
 
 export interface UsersTabProps {

@@ -30,6 +30,7 @@ export default function Header() {
 
   const menuItems = [
     { key: 'products', label: 'Sản phẩm' },
+    { key: 'utilities', label: 'Tiện ích' },
     { key: 'topup', label: 'Nạp tiền' },
     ...(isAdmin ? [{ key: 'admin', label: 'Quản lý' }] : []),
   ]
@@ -38,7 +39,7 @@ export default function Header() {
     // Wait for auth to initialize before making navigation decisions
     if (isInitializing) return
 
-    if ((page === 'purchased' || page === 'topup' || page === 'admin') && !user) {
+    if ((page === 'purchased' || page === 'topup' || page === 'admin' || page === 'utilities') && !user) {
       setShowAuthModal(true)
       return
     }
@@ -68,11 +69,11 @@ export default function Header() {
               onClick={() => navigate('/products')}
             >
               <img
-                src="/logo.png"
-                alt="AI Nắng vàng"
+                src="/DigiGO.png"
+                alt="DigiGOVN"
                 className="h-8 w-8 rounded-full object-cover mr-2"
               />
-              <span className="text-xl font-bold text-gray-900">AI Nắng vàng</span>
+              <span className="text-xl font-bold text-gray-900">DigiGOVN</span>
             </div>
 
             {/* Desktop Menu */}

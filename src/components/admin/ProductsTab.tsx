@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { Plus, Edit, Trash2, Key, ArrowUp, ArrowDown, Flame } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Plus, Edit, Trash2, Key, ArrowUp, ArrowDown, Flame, Copy } from 'lucide-react'
 import { ProductsTabProps } from './types'
 
 export default function ProductsTab({
@@ -14,9 +14,13 @@ export default function ProductsTab({
     onEditVariant,
     onDeleteVariant,
     onMoveVariant,
-    onManageKeys
+    onManageKeys,
+    onDuplicateVariant,
+    onReorderProducts
 }: ProductsTabProps) {
     const highlightedRef = useRef<HTMLDivElement>(null)
+    const [draggingId, setDraggingId] = useState<string | null>(null)
+    const [overId, setOverId] = useState<string | null>(null)
 
     useEffect(() => {
         if (highlightedProductId && highlightedRef.current) {
@@ -46,7 +50,10 @@ export default function ProductsTab({
                     <div 
                         key={product.id} 
                         ref={product.id === highlightedProductId ? highlightedRef : null}
-                        className="bg-white shadow rounded-lg p-4 sm:p-6"
+                        className={`bg-white shadow rounded-lg p-4 sm:p-6 transition-all ${overId === product.id ? 'ring-2 ring-blue-400' : ''}`}
+                        onDragOver={(e) => { e.preventDefault(); setOverId(product.id) }}
+                        onDragEnter={() => setOverId(product.id)}
+                        onDrop={() => { if (draggingId) { const targetIndex = products.findIndex(p => p.id === product.id); onReorderProducts(draggingId, targetIndex); } setDraggingId(null); setOverId(null) }}
                     >
                         {/* Product Header */}
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
@@ -67,6 +74,17 @@ export default function ProductsTab({
                                     >
                                         <ArrowDown className="h-4 w-4" />
                                     </button>
+                                    <div
+                                        draggable
+                                        onDragStart={(e) => { setDraggingId(product.id); e.dataTransfer.setData('text/plain', product.id) }}
+                                        onDragEnd={() => { setDraggingId(null); setOverId(null) }}
+                                        className="mt-1 sm:mt-2 flex flex-col items-center justify-center text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing select-none"
+                                        title="Kéo thả để sắp xếp"
+                                    >
+                                        <span className="w-3 h-0.5 bg-current mb-0.5 rounded"></span>
+                                        <span className="w-3 h-0.5 bg-current mb-0.5 rounded"></span>
+                                        <span className="w-3 h-0.5 bg-current rounded"></span>
+                                    </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
@@ -164,6 +182,9 @@ export default function ProductsTab({
                                                         }`}>
                                                             Giá bán: {variant.price.toLocaleString('vi-VN')}đ
                                                         </span>
+                                                        <span className="text-green-600 font-medium">
+                                                            Tiền lời: {(variant.price - (variant.cost_price || 0)).toLocaleString('vi-VN')}đ
+                                                        </span>
                                                         <span className="text-gray-500 text-xs sm:text-sm">Stock: {variant.stock || 0}</span>
                                                     </div>
                                                 </div>
@@ -175,6 +196,13 @@ export default function ProductsTab({
                                                     title="Quản lý keys"
                                                 >
                                                     <Key className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => onDuplicateVariant(product, variant)}
+                                                    className="text-green-600 hover:text-green-900 p-1.5 hover:bg-green-50 rounded"
+                                                    title="Nhân bản"
+                                                >
+                                                    <Copy className="h-4 w-4" />
                                                 </button>
                                                 <button
                                                     onClick={() => onEditVariant(product, variant)}

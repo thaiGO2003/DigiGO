@@ -1,10 +1,8 @@
-# AI Nắng vàng
+# DigiGOVN
 
-Hệ thống thương mại điện tử AI Nắng vàng (trực thuộc DigiGO) chuyên cung cấp các sản phẩm số như phần mềm, game, và tài khoản giáo dục. Dự án được xây dựng với React, TypeScript, Vite và Supabase.
+Hệ thống thương mại điện tử DigiGOVN - Nền tảng mua sắm sản phẩm số tự động.
 
-![DigiGO Banner](https://images.pexels.com/photos/230544/pexels-photo-230544.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1)
-
-## 🚀 Tính năng chính
+## Tính năng
 
 ### Người dùng (Khách hàng)
 - **Xem danh sách sản phẩm**: Hiển thị sản phẩm theo dạng lưới với hình ảnh, giá và mô tả.

@@ -1,136 +1,107 @@
 import { useState, useEffect } from 'react'
-import { ShoppingBag, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
-export default function RecentPurchasesNotification() {
-  const [isVisible, setIsVisible] = useState(false)
-  const [notification, setNotification] = useState<{ name: string; product: string; time: string } | null>(null)
-  const [progress, setProgress] = useState(100)
-  const [isDesktop, setIsDesktop] = useState(false)
-  const [pool, setPool] = useState<{ users: string[], products: string[] }>({ users: [], products: [] })
+type RecentPurchase = {
+  customer_name: string
+  product_name: string
+  purchase_time: string
+  price: number
+}
 
-  // Only run on desktop
+function getRelativeTime(isoString: string) {
+  const diff = Date.now() - new Date(isoString).getTime()
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+
+  if (days > 0) return `${days} ngày trước`
+  if (hours > 0) return `${hours} giờ trước`
+  if (minutes > 0) return `${minutes} phút trước`
+  return 'Vừa xong'
+}
+
+export default function RecentPurchasesNotification() {
+  const [purchases, setPurchases] = useState<RecentPurchase[]>([])
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isVisible, setIsVisible] = useState(false)
+
   useEffect(() => {
-    const checkDesktop = () => {
-      setIsDesktop(window.innerWidth >= 1024) // lg breakpoint
-    }
-    checkDesktop()
-    window.addEventListener('resize', checkDesktop)
-    return () => window.removeEventListener('resize', checkDesktop)
+    fetchPurchases()
+    
+    // Refresh data every 30 minutes
+    const interval = setInterval(fetchPurchases, 30 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [])
 
-  // Fetch real data pool
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data, error } = await supabase.rpc('get_notification_entities')
-        if (!error && data) {
-          // data is { users: string[], products: string[] }
-          // If RPC returns null/empty for some reason, fallback to empty arrays
-          setPool({
-            users: (data as any).users || [],
-            products: (data as any).products || []
-          })
-        }
-      } catch (err) {
-        console.error('Failed to fetch notification entities:', err)
+    if (purchases.length === 0) return
+
+    // Show notification cycle
+    const showNext = () => {
+      setIsVisible(true)
+      // Hide after 5 seconds
+      setTimeout(() => {
+        setIsVisible(false)
+        // Move to next item after hidden
+        setTimeout(() => {
+          setCurrentIndex((prev) => (prev + 1) % purchases.length)
+          // Wait random time before showing next (e.g., 10-20 seconds)
+          const randomDelay = Math.floor(Math.random() * 10000) + 10000
+          timeoutId = setTimeout(showNext, randomDelay)
+        }, 500) // Wait for fade out animation
+      }, 5000)
+    }
+
+    // Start the cycle
+    let timeoutId = setTimeout(showNext, 2000)
+
+    return () => clearTimeout(timeoutId)
+  }, [purchases])
+
+  const fetchPurchases = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('recent-purchases')
+      if (error) throw error
+      if (Array.isArray(data) && data.length > 0) {
+        setPurchases(data)
       }
+    } catch (err) {
+      console.error('Failed to fetch recent purchases:', err)
     }
+  }
 
-    if (isDesktop) {
-        fetchData()
-    }
-  }, [isDesktop])
+  if (purchases.length === 0) return null
 
-  // Progress bar logic
-  useEffect(() => {
-    if (isVisible && isDesktop) {
-      const duration = 3000 // 3 seconds
-      const intervalTime = 30
-      const steps = duration / intervalTime
-      const decrement = 100 / steps
-
-      const timer = setInterval(() => {
-        setProgress((prev) => {
-          if (prev <= 0) {
-            clearInterval(timer)
-            return 0
-          }
-          return prev - decrement
-        })
-      }, intervalTime)
-
-      return () => clearInterval(timer)
-    }
-  }, [isVisible, isDesktop])
-
-  useEffect(() => {
-    if (!isDesktop) return
-    // Only start cycle if we have data
-    if (pool.users.length === 0 || pool.products.length === 0) return
-
-    let showTimeoutId: number | undefined
-    let hideTimeoutId: number | undefined
-
-    const cycle = () => {
-      const randomDelay = 5000 + Math.random() * 10000
-      showTimeoutId = window.setTimeout(() => {
-        const name = pool.users[Math.floor(Math.random() * pool.users.length)]
-        const product = pool.products[Math.floor(Math.random() * pool.products.length)]
-        
-        // Random time text
-        const times = ['vừa xong', '1 phút trước', '2 phút trước', '5 phút trước', 'vừa mua']
-        const time = times[Math.floor(Math.random() * times.length)]
-
-        setNotification({ name, product, time })
-        setIsVisible(true)
-        setProgress(100)
-
-        hideTimeoutId = window.setTimeout(() => {
-          setIsVisible(false)
-          cycle()
-        }, 3000)
-      }, randomDelay)
-    }
-
-    cycle()
-
-    return () => {
-      if (showTimeoutId !== undefined) window.clearTimeout(showTimeoutId)
-      if (hideTimeoutId !== undefined) window.clearTimeout(hideTimeoutId)
-    }
-  }, [isDesktop, pool])
-
-
-  if (!isDesktop || !isVisible || !notification) return null
+  const current = purchases[currentIndex]
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 animate-fade-in-up">
-      <div className="bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden w-80 relative">
-        <div className="p-3 flex items-start gap-3">
-            <div className="bg-green-100 p-2 rounded-full flex-shrink-0">
-                <ShoppingBag className="h-5 w-5 text-green-600" />
+    <div 
+      className={`fixed bottom-4 left-4 z-50 transition-all duration-500 transform ${
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
+      }`}
+    >
+      <div className="bg-white rounded-lg shadow-lg border border-blue-100 p-4 max-w-sm flex items-start gap-3 relative overflow-hidden">
+        {/* Decorative background element */}
+        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+        
+        <div className="flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                {current.customer_name.charAt(0)}
             </div>
-            <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-900 font-medium truncate">
-                    <span className="font-bold">{notification.name}</span> vừa mua
-                </p>
-                <p className="text-sm text-blue-600 font-bold truncate">{notification.product}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{notification.time}</p>
-            </div>
-            <button 
-                onClick={() => setIsVisible(false)}
-                className="text-gray-400 hover:text-gray-600 p-1"
-            >
-                <X className="h-4 w-4" />
-            </button>
         </div>
-        {/* Progress Bar */}
-        <div className="h-1 w-full bg-gray-100 absolute bottom-0 left-0">
-            <div 
-                className="h-full bg-blue-500 transition-all duration-75 ease-linear"
-                style={{ width: `${progress}%` }}
-            />
+        
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-900">
+            <span className="text-blue-600">{current.customer_name}</span> vừa mua
+          </p>
+          <p className="text-sm text-gray-600 truncate font-medium">
+            {current.product_name}
+          </p>
+          <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+            <span>{getRelativeTime(current.purchase_time)}</span>
+            <span>•</span>
+            <span className="text-emerald-600 font-semibold">Đã xác nhận</span>
+          </p>
         </div>
       </div>
     </div>

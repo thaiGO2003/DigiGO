@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Calendar, TrendingUp, TrendingDown, BarChart2, DollarSign, Package, PiggyBank } from 'lucide-react'
 import {
-    AreaChart,
-    Area,
+    ComposedChart,
+    Line,
+    Bar,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    Legend
+    Legend,
+    Brush
 } from 'recharts'
 import { StatsTabProps } from './types'
 
@@ -20,7 +22,7 @@ interface StatsData {
     deposits: number
     productSold: number
     bestSellers: { name: string; count: number; productId?: string }[]
-    dailyStats: { date: string; revenue: number; deposits: number }[]
+    dailyStats: { date: string; revenue: number; deposits: number; profit: number; cost: number }[]
 }
 
 export default function StatsTab({ onNavigateToTransactions, onNavigateToProducts }: StatsTabProps) {
@@ -55,14 +57,14 @@ export default function StatsTab({ onNavigateToTransactions, onNavigateToProduct
             let cost = 0
             let deposits = 0
             const productCounter: Record<string, { name: string; count: number; productId?: string }> = {}
-            const dailyStatsMap: Record<string, { date: string; revenue: number; deposits: number; profit: number }> = {}
+            const dailyStatsMap: Record<string, { date: string; revenue: number; deposits: number; profit: number; cost: number }> = {}
 
             // Initialize daily stats map with all dates in range
             const start = new Date(startDate)
             const end = new Date(endDate)
             for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                 const dateStr = d.toISOString().substring(0, 10)
-                dailyStatsMap[dateStr] = { date: dateStr, revenue: 0, deposits: 0, profit: 0 }
+                dailyStatsMap[dateStr] = { date: dateStr, revenue: 0, deposits: 0, profit: 0, cost: 0 }
             }
 
             (data || []).forEach((tx: any) => {
@@ -71,7 +73,7 @@ export default function StatsTab({ onNavigateToTransactions, onNavigateToProduct
                 
                 // Ensure date exists in map (for safety if date logic is slightly off)
                 if (!dailyStatsMap[dateStr]) {
-                    dailyStatsMap[dateStr] = { date: dateStr, revenue: 0, deposits: 0, profit: 0 }
+                    dailyStatsMap[dateStr] = { date: dateStr, revenue: 0, deposits: 0, profit: 0, cost: 0 }
                 }
 
                 if (tx.type === 'purchase') {
@@ -85,6 +87,7 @@ export default function StatsTab({ onNavigateToTransactions, onNavigateToProduct
                         
                         dailyStatsMap[dateStr].revenue += amount
                         dailyStatsMap[dateStr].profit += (amount - txCost)
+                        dailyStatsMap[dateStr].cost += txCost
                     }
                     
                     // Product count: Should we count admin purchases? 
@@ -129,14 +132,27 @@ export default function StatsTab({ onNavigateToTransactions, onNavigateToProduct
 
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
+            const idx = stats?.dailyStats.findIndex(d => d.date === label) ?? -1
+            const prev = idx > 0 ? stats!.dailyStats[idx - 1] : null
+            const formatVND = (v: number) => v.toLocaleString('vi-VN') + 'đ'
+            const change = (curr?: number, prevV?: number) => {
+                if (prevV === undefined || prevV === null) return '—'
+                if (prevV === 0) return '—'
+                const pct = ((curr! - prevV) / prevV) * 100
+                return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`
+            }
             return (
                 <div className="bg-white p-3 border border-gray-200 shadow-lg rounded-lg">
                     <p className="font-semibold text-gray-900 mb-2">{new Date(label).toLocaleDateString('vi-VN')}</p>
-                    {payload.map((entry: any, index: number) => (
-                        <p key={index} className="text-sm" style={{ color: entry.color }}>
-                            {entry.name === 'revenue' ? 'Doanh thu' : 'Tiền nạp'}: {entry.value.toLocaleString('vi-VN')}đ
-                        </p>
-                    ))}
+                    {payload.map((entry: any, index: number) => {
+                        const nameMap: Record<string, string> = { revenue: 'Doanh thu', profit: 'Lợi nhuận', cost: 'Chi phí' }
+                        const prevVal = prev ? (entry.dataKey === 'revenue' ? prev.revenue : entry.dataKey === 'profit' ? prev.profit : prev.cost) : undefined
+                        return (
+                            <p key={index} className="text-sm" style={{ color: entry.color }}>
+                                {nameMap[entry.dataKey] || entry.name}: {formatVND(entry.value)} ({change(entry.value, prevVal)})
+                            </p>
+                        )
+                    })}
                     <p className="text-xs text-gray-500 mt-2 italic">Nhấn để xem chi tiết</p>
                 </div>
             )
@@ -221,10 +237,10 @@ export default function StatsTab({ onNavigateToTransactions, onNavigateToProduct
                     
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-2 bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
-                             <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4 sm:mb-6">Biểu đồ Doanh thu & Lợi nhuận</h3>
+                             <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4 sm:mb-6">Biểu đồ Doanh thu, Lợi nhuận & Chi phí</h3>
                              <div className="h-[250px] sm:h-[300px] w-full -ml-2 sm:ml-0">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart
+                                    <ComposedChart
                                         data={stats.dailyStats}
                                         margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                                         onClick={(e) => {
@@ -234,16 +250,6 @@ export default function StatsTab({ onNavigateToTransactions, onNavigateToProduct
                                         }}
                                         className="cursor-pointer"
                                     >
-                                        <defs>
-                                            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                            </linearGradient>
-                                            <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.1}/>
-                                                <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
-                                            </linearGradient>
-                                        </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                                         <XAxis 
                                             dataKey="date" 
@@ -254,6 +260,16 @@ export default function StatsTab({ onNavigateToTransactions, onNavigateToProduct
                                             interval="preserveStartEnd"
                                         />
                                         <YAxis 
+                                            yAxisId="left"
+                                            tickFormatter={(value) => value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : `${(value / 1000).toFixed(0)}K`}
+                                            tick={{ fontSize: 10, fill: '#6b7280' }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                            width={45}
+                                        />
+                                        <YAxis 
+                                            yAxisId="right" 
+                                            orientation="right"
                                             tickFormatter={(value) => value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : `${(value / 1000).toFixed(0)}K`}
                                             tick={{ fontSize: 10, fill: '#6b7280' }}
                                             axisLine={false}
@@ -261,28 +277,36 @@ export default function StatsTab({ onNavigateToTransactions, onNavigateToProduct
                                             width={45}
                                         />
                                         <Tooltip content={<CustomTooltip />} />
-                                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                        <Area 
+                                        <Legend wrapperStyle={{ paddingTop: '8px' }} />
+                                        <Line 
+                                            yAxisId="left"
                                             type="monotone" 
                                             dataKey="revenue" 
-                                            name="revenue"
-                                            stroke="#10b981" 
-                                            fillOpacity={1} 
-                                            fill="url(#colorRevenue)" 
+                                            name="Doanh thu"
+                                            stroke="#2563eb" 
                                             strokeWidth={2}
-                                            activeDot={{ r: 6 }}
+                                            dot={false}
+                                            activeDot={{ r: 5 }}
                                         />
-                                        <Area 
+                                        <Line 
+                                            yAxisId="left"
                                             type="monotone" 
                                             dataKey="profit" 
-                                            name="profit"
-                                            stroke="#06b6d4" 
-                                            fillOpacity={1} 
-                                            fill="url(#colorProfit)" 
+                                            name="Lợi nhuận"
+                                            stroke="#16a34a" 
                                             strokeWidth={2}
-                                            activeDot={{ r: 6 }}
+                                            dot={false}
+                                            activeDot={{ r: 5 }}
                                         />
-                                    </AreaChart>
+                                        <Bar 
+                                            yAxisId="right"
+                                            dataKey="cost"
+                                            name="Chi phí"
+                                            fill="#f59e0b"
+                                            barSize={14}
+                                        />
+                                        <Brush dataKey="date" height={18} travellerWidth={10} />
+                                    </ComposedChart>
                                 </ResponsiveContainer>
                              </div>
                         </div>

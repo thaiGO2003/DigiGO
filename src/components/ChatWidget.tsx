@@ -202,8 +202,11 @@ export default function ChatWidget() {
 
       // Send Telegram notification if user is not admin
       if (!user.is_admin) {
-        const telegramMsg = `<b>Tin nhắn mới từ khách hàng:</b>\n\n- Username: ${user.username || 'N/A'}\n- Họ tên: ${user.full_name || 'N/A'}\n- Nội dung: ${newMessage.trim()}`
-        sendTelegramNotification(telegramMsg)
+        const username = user.username || 'N/A'
+        const fullName = user.full_name || 'N/A'
+        
+        const telegramMsg = `<b>Tin nhắn mới từ khách hàng:</b>\n\n- Username: ${username}\n- Họ tên: ${fullName}\n- Nội dung: ${newMessage.trim()}`
+        sendTelegramNotification(telegramMsg, { username, full_name: fullName })
       }
 
       setNewMessage('')

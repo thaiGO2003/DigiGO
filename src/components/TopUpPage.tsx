@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CreditCard, History, Copy, CheckCircle, Download, Timer, AlertCircle, RefreshCw, Globe } from 'lucide-react'
 import { supabase, Transaction, BankConfig } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -9,6 +10,7 @@ const PRESET_AMOUNTS = [50000, 100000, 200000, 500000, 1000000, 2000000]
 
 export default function TopUpPage() {
   const { user, loading: authLoading, isInitializing } = useAuth()
+  const navigate = useNavigate()
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null)
   const [customAmount, setCustomAmount] = useState('')
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -33,6 +35,18 @@ export default function TopUpPage() {
       clearInterval(timer)
       if (successModalTimerRef.current) {
         clearTimeout(successModalTimerRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const amountParam = params.get('amount')
+    if (amountParam) {
+      const amount = parseInt(amountParam)
+      if (!isNaN(amount) && amount > 0) {
+        setCustomAmount(amount.toString())
+        setSelectedAmount(null)
       }
     }
   }, [])
@@ -497,6 +511,16 @@ export default function TopUpPage() {
                   >
                     ← Hủy và tạo đơn khác
                   </button>
+                  
+                  <div className="pt-2 border-t border-gray-100">
+                    <p className="text-sm text-gray-500 mb-1">Nếu bạn đã nạp xong?</p>
+                    <button
+                      onClick={() => navigate('/profile#topups')}
+                      className="text-blue-600 hover:text-blue-700 font-bold text-sm hover:underline"
+                    >
+                      Bấm vào đây để xem lịch sử nạp
+                    </button>
+                  </div>
                 </div>
               </div>
 

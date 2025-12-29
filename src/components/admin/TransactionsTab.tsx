@@ -494,8 +494,8 @@ export default function TransactionsTab({
                                     >
                                         <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600">{tx.users?.full_name || 'N/A'}</p>
                                         {tx.users?.username && (
-                                            <p className="text-xs text-gray-400">@{tx.users.username}</p>
-                                        )}
+                    <p className="text-xs text-gray-400">{tx.users.username}</p>
+                  )}
                                         <p className="text-xs text-gray-500 truncate">{tx.users?.email}</p>
                                     </button>
                                 </div>

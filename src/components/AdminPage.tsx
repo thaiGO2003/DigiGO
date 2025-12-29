@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { BarChart2, Package, Users, MessageCircle, CreditCard, Landmark } from 'lucide-react'
+import { BarChart2, Package, Users, MessageCircle, CreditCard, Landmark, Wrench, ShoppingCart } from 'lucide-react'
 import { supabase, Product, ProductVariant, User, ChatMessage, BankConfig } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
@@ -18,9 +18,10 @@ import {
   AdminTabType,
   TransactionFilter,
   removeVietnameseTones,
-  StatsTab
+  StatsTab,
+  UtilitiesTab,
+  ImportTab
 } from './admin'
-
 export default function AdminPage() {
   const { user } = useAuth()
   const isAdmin = user?.email?.toLowerCase() === 'luongquocthai.thaigo.2003@gmail.com' || user?.is_admin
@@ -35,6 +36,8 @@ export default function AdminPage() {
     { id: 'chat', label: 'Chat hỗ trợ', icon: MessageCircle },
     { id: 'transactions', label: 'Giao dịch', icon: CreditCard },
     { id: 'bank', label: 'Ngân hàng', icon: Landmark },
+    { id: 'utilities', label: 'Tiện ích', icon: Wrench },
+    { id: 'import', label: 'Nhập hàng', icon: ShoppingCart },
   ]
 
   useEffect(() => {
@@ -270,6 +273,21 @@ export default function AdminPage() {
     const { error: error2 } = await supabase.from('products').update({ sort_order: currentIndex }).eq('id', targetProduct.id)
     if (error || error2) fetchProducts()
   }
+  
+  const handleReorderProducts = async (dragProductId: string, targetIndex: number) => {
+    const currentIndex = products.findIndex(p => p.id === dragProductId)
+    if (currentIndex === -1 || targetIndex < 0 || targetIndex >= products.length || targetIndex === currentIndex) return
+    const reordered = [...products]
+    const [moved] = reordered.splice(currentIndex, 1)
+    reordered.splice(targetIndex, 0, moved)
+    const withOrder = reordered.map((p, idx) => ({ ...p, sort_order: idx }))
+    setProducts(withOrder)
+    try {
+      await Promise.all(withOrder.map(p => supabase.from('products').update({ sort_order: p.sort_order }).eq('id', p.id)))
+    } finally {
+      fetchProducts()
+    }
+  }
 
   const handleMoveVariant = async (product: Product, variant: ProductVariant, direction: 'up' | 'down') => {
     if (!product.variants) return
@@ -330,6 +348,38 @@ export default function AdminPage() {
     if (!confirm('Xóa gói này?')) return
     await supabase.from('product_variants').delete().eq('id', id)
     fetchProducts()
+  }
+  
+  const handleDuplicateVariant = async (product: Product, variant: ProductVariant) => {
+    try {
+      const nextOrder =
+        (product.variants && product.variants.length > 0)
+          ? Math.max(
+              ...product.variants.map(v => (v.sort_order ?? 0))
+            ) + 1
+          : 0
+      
+      const payload: Partial<ProductVariant> & { product_id: string; name: string; price: number } = {
+        product_id: product.id,
+        name: `${variant.name} (copy)`,
+        price: variant.price,
+        cost_price: variant.cost_price,
+        discount_percent: variant.discount_percent,
+        duration_days: variant.duration_days,
+        description: variant.description,
+        stock: variant.stock,
+        guide_url: variant.guide_url,
+        is_manual_delivery: variant.is_manual_delivery,
+        manual_stock: variant.manual_stock,
+        sort_order: nextOrder
+      }
+      
+      await supabase.from('product_variants').insert([payload])
+      fetchProducts()
+    } catch (e) {
+      console.error('Duplicate variant failed:', e)
+      fetchProducts()
+    }
   }
 
   const handleToggleAdmin = async (userId: string, currentStatus: boolean) => {
@@ -541,8 +591,10 @@ export default function AdminPage() {
           onAddVariant={(p) => { setSelectedProduct(p); setSelectedVariant(null); setShowVariantModal(true) }}
           onEditVariant={(p, v) => { setSelectedProduct(p); setSelectedVariant(v); setShowVariantModal(true) }}
           onDeleteVariant={handleDeleteVariant}
+          onDuplicateVariant={handleDuplicateVariant}
           onMoveVariant={handleMoveVariant}
           onManageKeys={(p, v) => { setSelectedProduct(p); setSelectedVariant(v); setShowKeyModal(true) }}
+          onReorderProducts={handleReorderProducts}
         />
       )}
 
@@ -599,6 +651,9 @@ export default function AdminPage() {
           onActivateBank={handleActivateBankConfig}
         />
       )}
+
+      {activeTab === 'utilities' && <UtilitiesTab />}
+      {activeTab === 'import' && <ImportTab />}
 
       {/* Modals */}
       <ProductModal

@@ -1,5 +1,6 @@
-import { ShoppingCart, Package, AlertTriangle, ExternalLink, Flame } from 'lucide-react'
+import { ShoppingCart, Package, AlertTriangle, ExternalLink, Flame, Clock } from 'lucide-react'
 import { Product, ProductVariant, User } from '../lib/supabase'
+import { useDiscounts } from '../hooks/useDiscounts'
 
 interface ProductCardProps {
   product: Product
@@ -8,28 +9,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, user = null, onPurchase }: ProductCardProps) {
-  const calculatePriceWithRank = (price: number, variantDiscount: number = 0) => {
-    const rankDiscount = user?.rank ?
-      (user.rank === 'bronze' ? 2 :
-        user.rank === 'silver' ? 4 :
-          user.rank === 'gold' ? 6 :
-            user.rank === 'platinum' ? 8 :
-              user.rank === 'diamond' ? 10 : 0) : 0
-            
-    // Tính giảm giá từ referral (1% cho mỗi người giới thiệu, tối đa 10%)
-    const referralCountDiscount = user?.referral_count ? Math.min(user.referral_count * 1, 10) : 0
-
-    // Giảm thêm 1% nếu người dùng được giới thiệu
-    const referralDiscount = user?.referred_by ? 1 : 0
-    
-    // Tính tổng discount tích lũy trước
-    const accumulatedDiscount = variantDiscount + rankDiscount + referralCountDiscount + referralDiscount
-    
-    // Áp dụng giới hạn 20%
-    const finalDiscount = Math.min(accumulatedDiscount, 20)
-    
-    return Math.round(price * (100 - finalDiscount) / 100)
-  }
+  const { computePercent, getUnitPrice } = useDiscounts()
 
   return (
     <div className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow h-full overflow-hidden flex flex-col md:flex-row">
@@ -60,7 +40,7 @@ export default function ProductCard({ product, user = null, onPurchase }: Produc
             {product.mechanism && (
               <div>
                 <p className="text-xs font-semibold text-gray-700 mb-0.5">Cơ chế:</p>
-                <p className="text-xs text-gray-600 line-clamp-3 hover:line-clamp-none transition-all">{product.mechanism}</p>
+                <p className="text-xs text-gray-600 whitespace-pre-wrap break-words">{product.mechanism}</p>
               </div>
             )}
 
@@ -74,14 +54,14 @@ export default function ProductCard({ product, user = null, onPurchase }: Produc
             {product.strengths && (
               <div>
                 <p className="text-xs font-semibold text-green-700 mb-0.5">Điểm mạnh:</p>
-                <p className="text-xs text-gray-600 line-clamp-3 hover:line-clamp-none transition-all">{product.strengths}</p>
+                <p className="text-xs text-gray-600 whitespace-pre-wrap break-words">{product.strengths}</p>
               </div>
             )}
 
             {product.weaknesses && (
               <div>
                 <p className="text-xs font-semibold text-red-700 mb-0.5">Điểm yếu:</p>
-                <p className="text-xs text-gray-600 line-clamp-3 hover:line-clamp-none transition-all">{product.weaknesses}</p>
+                <p className="text-xs text-gray-600 whitespace-pre-wrap break-words">{product.weaknesses}</p>
               </div>
             )}
 
@@ -118,9 +98,15 @@ export default function ProductCard({ product, user = null, onPurchase }: Produc
             >
               {/* Variant Header */}
               <div className="flex items-start justify-between mb-2 gap-2">
-                <span className="font-bold text-gray-900 text-sm line-clamp-2" title={variant.name}>
-                  {variant.name}
-                </span>
+                <div className="flex flex-col gap-1">
+                  <span className="font-bold text-gray-900 text-sm line-clamp-2" title={variant.name}>
+                    {variant.name}
+                  </span>
+                  <span className="text-[11px] text-gray-500 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {(variant.duration_days || 0) === 0 ? 'Vĩnh viễn' : `${variant.duration_days} ngày`}
+                  </span>
+                </div>
                 
                 {/* Stock Status Badges */}
                 {(variant.stock || 0) <= 0 ? (
@@ -139,20 +125,24 @@ export default function ProductCard({ product, user = null, onPurchase }: Produc
               <div className="flex items-end justify-between gap-3 mt-3">
                 {/* Price Display */}
                 <div className="flex flex-col">
-                  {calculatePriceWithRank(variant.price, variant.discount_percent || 0) < variant.price ? (
+                  {getUnitPrice(user, variant) < variant.price ? (
                     <>
                       <span className="text-xs text-gray-400 line-through mb-0.5">
                         {variant.price.toLocaleString('vi-VN')}đ
                       </span>
                       <div className="flex items-center flex-wrap gap-2">
                         <span className="text-base font-extrabold text-red-600">
-                          {calculatePriceWithRank(variant.price, variant.discount_percent || 0).toLocaleString('vi-VN')}đ
+                          {getUnitPrice(user, variant).toLocaleString('vi-VN')}đ
                         </span>
-                        {(variant.discount_percent || 0) > 0 && (
-                          <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-semibold">
-                            -{variant.discount_percent}%
-                          </span>
-                        )}
+                        {(() => {
+                          const { integratedPercent, buyerPercent } = computePercent(user, variant)
+                          const labelPercent = integratedPercent + (buyerPercent > 0 ? buyerPercent : 0)
+                          return labelPercent > 0 ? (
+                            <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-semibold">
+                              -{labelPercent}%
+                            </span>
+                          ) : null
+                        })()}
                       </div>
                     </>
                   ) : (

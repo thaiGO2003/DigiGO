@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import FormatMessageModal from './FormatMessageModal'
-import { Send, ArrowLeft, MessageCircle, Search, FileJson } from 'lucide-react'
+import { Send, ArrowLeft, MessageCircle, Search, FileJson, ArrowDown } from 'lucide-react'
 import { ChatTabProps } from './types'
 
 const playNotificationSound = () => {
@@ -24,6 +24,8 @@ export default function ChatTab({
 }: ChatTabProps) {
     const lastMessageIdRef = useRef<string | null>(null)
     const formRef = useRef<HTMLFormElement>(null)
+    const messagesContainerRef = useRef<HTMLDivElement>(null)
+    const [showScrollBottom, setShowScrollBottom] = useState(false)
 
     const [userSearchTerm, setUserSearchTerm] = useState('')
     const [msgSearchTerm, setMsgSearchTerm] = useState('')
@@ -114,6 +116,32 @@ export default function ChatTab({
         // Note: This relies on React state propagation speed. 
         // If 100ms is too fast, it sends empty/old.
     }
+    
+    const scrollToBottom = () => {
+        const el = messagesContainerRef.current
+        if (!el) return
+        el.scrollTop = el.scrollHeight
+        setShowScrollBottom(false)
+    }
+    
+    const handleScroll = () => {
+        const el = messagesContainerRef.current
+        if (!el) return
+        const distance = el.scrollHeight - el.scrollTop - el.clientHeight
+        setShowScrollBottom(distance > 100)
+    }
+    
+    useEffect(() => {
+        const el = messagesContainerRef.current
+        if (!el) return
+        const distance = el.scrollHeight - el.scrollTop - el.clientHeight
+        if (distance <= 100) {
+            el.scrollTop = el.scrollHeight
+            setShowScrollBottom(false)
+        } else {
+            setShowScrollBottom(true)
+        }
+    }, [filteredMessages])
 
     return (
         <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 lg:gap-6 h-[calc(100vh-220px)] lg:h-auto">
@@ -189,7 +217,11 @@ export default function ChatTab({
                         </div>
                         
                         {/* Messages */}
-                        <div className="flex-1 p-3 sm:p-4 overflow-y-auto space-y-3">
+                        <div 
+                            ref={messagesContainerRef}
+                            onScroll={handleScroll}
+                            className="flex-1 p-3 sm:p-4 overflow-y-auto space-y-3 relative"
+                        >
                             {filteredMessages.length === 0 ? (
                                 <p className="text-sm text-gray-400 text-center py-8">
                                     {msgSearchTerm ? 'Không tìm thấy tin nhắn nào' : 'Chưa có tin nhắn'}
@@ -220,6 +252,18 @@ export default function ChatTab({
                                         </div>
                                     </div>
                                 ))
+                            )}
+
+                            {/* Scroll to bottom button */}
+                            {showScrollBottom && (
+                                <button
+                                    onClick={scrollToBottom}
+                                    className="fixed sm:absolute bottom-20 sm:bottom-4 right-4 sm:right-6 bg-white border border-gray-200 shadow-lg rounded-full p-2 text-gray-500 hover:text-blue-600 hover:bg-gray-50 transition-all z-10 animate-fade-in"
+                                    title="Cuộn xuống mới nhất"
+                                >
+                                    <ArrowDown className="h-5 w-5" />
+                                    {/* Optional: Add unread badge if needed in future */}
+                                </button>
                             )}
                         </div>
                         
