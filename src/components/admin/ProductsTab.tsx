@@ -186,6 +186,7 @@ export default function ProductsTab({
                                                             Tiền lời: {(variant.price - (variant.cost_price || 0)).toLocaleString('vi-VN')}đ
                                                         </span>
                                                         <span className="text-gray-500 text-xs sm:text-sm">Stock: {variant.stock || 0}</span>
+                                                        <span className="text-gray-500 text-xs sm:text-sm">Đã bán: {variant.total_sold || 0}</span>
                                                     </div>
                                                 </div>
                                             </div>

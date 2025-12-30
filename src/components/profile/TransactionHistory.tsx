@@ -179,22 +179,22 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
                 {tx.type === 'purchase' && (
                   <>
                     {tx.metadata?.is_manual_delivery ? (
-                      <div className="flex items-center gap-2 bg-orange-50 px-3 py-2 rounded-lg border border-orange-200 w-full">
+                      <div className="flex items-center gap-2 bg-yellow-50 px-3 py-2 rounded-lg border border-yellow-200 w-full">
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs text-orange-600 mb-0.5">
+                          <p className="text-xs text-yellow-700 mb-0.5">
                             {tx.product_variants?.products?.name || 'Sản phẩm'} - {tx.product_variants?.name || 'Gói'}:
                           </p>
-                          <code className="text-sm font-mono text-orange-900 font-bold block truncate">
+                          <code className="text-sm font-mono text-yellow-900 font-bold block truncate">
                             {tx.id.split('-')[0].toUpperCase()}
                           </code>
-                          <p className="text-xs text-orange-500 mt-1">Gửi mã này cho Admin để nhận key</p>
+                          <p className="text-xs text-yellow-600 mt-1">Gửi mã này cho Admin để nhận key</p>
                         </div>
                         <button
                           onClick={() => {
                             const copyText = `${tx.id.split('-')[0].toUpperCase()} - ${tx.product_variants?.products?.name || 'Sản phẩm'} - ${tx.product_variants?.name || 'Gói'}`
                             copyToClipboard(copyText, tx.id)
                           }}
-                          className="text-orange-400 hover:text-orange-600 p-1 flex-shrink-0"
+                          className="text-yellow-500 hover:text-yellow-700 p-1 flex-shrink-0"
                           title="Sao chép Mã giao dịch"
                         >
                           {copiedKey === tx.id ? (

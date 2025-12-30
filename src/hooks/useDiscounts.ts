@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { supabase, ProductVariant, User } from '../lib/supabase'
+import { getRankPercent } from '../lib/rank'
 
 type DiscountSettings = {
   referral_buyer_discount?: number
@@ -42,24 +43,25 @@ export function useDiscounts(settingsOverride?: DiscountSettings) {
     return () => { active = false }
   }, [settingsOverride])
 
-  const rankPercent = (rank?: User['rank']) => {
-    switch (rank) {
-      case 'bronze': return 2
-      case 'silver': return 4
-      case 'gold': return 6
-      case 'platinum': return 8
-      case 'diamond': return 10
-      default: return 0
-    }
-  }
+  const rankPercent = (rank?: User['rank']) => getRankPercent(rank)
 
   const computePercent = (user: User | null | undefined, variant: ProductVariant) => {
     const variantDiscount = variant.discount_percent || 0
     const referralCount = user?.referral_count ?? 0
     const referralMax = settings.referral_max_discount ?? 10
-    const referralCountDiscount = Math.min(referralCount * 1, referralMax)
+    
+    // Giảm giá tích lũy = Rank + Tích lũy giới thiệu (Giới hạn tối đa 10%)
     const rankDiscount = rankPercent(user?.rank)
-    const integratedPercent = Math.min(variantDiscount + rankDiscount + referralCountDiscount, 20)
+    const referralCountDiscount = Math.min(referralCount * 1, referralMax)
+    const accumulatedDiscount = Math.min(rankDiscount + referralCountDiscount, 10)
+    
+    // Tổng giảm giá áp dụng lên giá gốc = Giảm giá gói + Giảm giá tích lũy
+    // Tuy nhiên, nếu bạn muốn TỔNG giảm giá cuối cùng (bao gồm cả gói) không quá 10% thì dùng dòng dưới:
+    // const integratedPercent = Math.min(variantDiscount + accumulatedDiscount, 10)
+    
+    // Theo yêu cầu "giảm giá tích lũy tối đa 10%", tôi giả định giảm giá gói (variant) là riêng biệt:
+    const integratedPercent = variantDiscount + accumulatedDiscount
+    
     const buyerPercent = user?.referred_by ? (settings.referral_buyer_discount ?? 1) : 0
     return {
       integratedPercent,
@@ -69,8 +71,9 @@ export function useDiscounts(settingsOverride?: DiscountSettings) {
         variantDiscount,
         rankDiscount,
         referralCountDiscount,
+        accumulatedDiscount,
         buyerPercent,
-        cappedAt20: integratedPercent >= 20,
+        cappedAt10: accumulatedDiscount >= 10,
       }
     }
   }

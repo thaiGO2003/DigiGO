@@ -77,12 +77,14 @@ export default function ProfilePage() {
     } else {
       fetchHistory()
     }
+    fetchCounts()
   }
 
   const [transactions, setTransactions] = useState<TransactionWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [personalPurchaseCount, setPersonalPurchaseCount] = useState(0)
 
   // Referral States
   const [referralStats, setReferralStats] = useState<ReferralStats>({ totalReferrals: 0, monthlyEarnings: 0, totalEarnings: 0 })
@@ -105,6 +107,7 @@ export default function ProfilePage() {
       } else {
         fetchHistory()
       }
+      fetchCounts()
     }
   }, [user, session, activeTab, isInitializing])
 
@@ -127,6 +130,25 @@ export default function ProfilePage() {
       console.error('Error fetching history:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchCounts = async () => {
+    if (!user) return
+    try {
+      // Tổng số lượng sản phẩm user đã mua (mỗi transaction purchase = 1 sản phẩm)
+      const personal = await supabase
+        .from('transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('type', 'purchase')
+        .eq('status', 'completed')
+
+      setPersonalPurchaseCount((personal.count as number) || 0)
+
+      
+    } catch (e) {
+      console.error(e)
     }
   }
 
@@ -216,6 +238,12 @@ export default function ProfilePage() {
 
             {/* Content */}
             <div className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <div className="bg-white border rounded-lg p-3">
+                  <p className="text-xs text-gray-500">Số lượng sản phẩm đã mua</p>
+                  <p className="text-xl font-bold text-gray-900">{personalPurchaseCount.toLocaleString('vi-VN')}</p>
+                </div>
+              </div>
               {activeTab !== 'referral' ? (
                 <TransactionHistory transactions={transactions} />
               ) : (

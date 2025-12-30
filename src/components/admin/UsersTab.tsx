@@ -6,11 +6,11 @@ import React from 'react'
 const getRankInfo = (rank: string) => {
     const ranks: Record<string, { label: string; discount: number; bgClass: string; textClass: string }> = {
         newbie: { label: 'Tân binh', discount: 0, bgClass: 'bg-green-100', textClass: 'text-green-800' },
-        bronze: { label: 'Đồng', discount: 2, bgClass: 'bg-orange-100', textClass: 'text-orange-800' },
-        silver: { label: 'Bạc', discount: 4, bgClass: 'bg-gray-200', textClass: 'text-gray-800' },
-        gold: { label: 'Vàng', discount: 6, bgClass: 'bg-yellow-100', textClass: 'text-yellow-800' },
-        platinum: { label: 'Platinum', discount: 8, bgClass: 'bg-blue-100', textClass: 'text-blue-800' },
-        diamond: { label: 'Kim cương', discount: 10, bgClass: 'bg-purple-100', textClass: 'text-purple-800' },
+        dong: { label: 'Đồng', discount: 1, bgClass: 'bg-yellow-50', textClass: 'text-yellow-800' },
+        sat: { label: 'Sắt', discount: 2, bgClass: 'bg-gray-200', textClass: 'text-gray-800' },
+        vang: { label: 'Vàng', discount: 3, bgClass: 'bg-yellow-200', textClass: 'text-yellow-900' },
+        luc_bao: { label: 'Lục bảo', discount: 4, bgClass: 'bg-blue-100', textClass: 'text-blue-800' },
+        kim_cuong: { label: 'Kim cương', discount: 5, bgClass: 'bg-purple-100', textClass: 'text-purple-800' },
     }
     return ranks[rank] || ranks.newbie
 }
@@ -65,12 +65,12 @@ export default function UsersTab({
                                 </div>
                                 <div className="space-y-2">
                                     {[
-                                        { rank: 'Tân binh', discount: '0%', range: 'Dưới 500K', bgClass: 'bg-green-50', textClass: 'text-green-600' },
-                                        { rank: 'Đồng', discount: '2%', range: '500K - 1 triệu', bgClass: 'bg-orange-50', textClass: 'text-orange-600' },
-                                        { rank: 'Bạc', discount: '4%', range: '1 - 2 triệu', bgClass: 'bg-gray-100', textClass: 'text-gray-600' },
-                                        { rank: 'Vàng', discount: '6%', range: '2 - 3 triệu', bgClass: 'bg-yellow-50', textClass: 'text-yellow-600' },
-                                        { rank: 'Platinum', discount: '8%', range: '3 - 5 triệu', bgClass: 'bg-blue-50', textClass: 'text-blue-600' },
-                                        { rank: 'Kim cương', discount: '10%', range: 'Trên 5 triệu', bgClass: 'bg-purple-50', textClass: 'text-purple-600' },
+                                        { rank: 'Tân binh', discount: '0%', range: 'Dưới 100K', bgClass: 'bg-green-50', textClass: 'text-green-600' },
+                                        { rank: 'Đồng', discount: '1%', range: '≥ 100K', bgClass: 'bg-yellow-50', textClass: 'text-yellow-700' },
+                                        { rank: 'Sắt', discount: '2%', range: '≥ 200K', bgClass: 'bg-gray-50', textClass: 'text-gray-600' },
+                                        { rank: 'Vàng', discount: '3%', range: '≥ 300K', bgClass: 'bg-yellow-100', textClass: 'text-yellow-800' },
+                                        { rank: 'Lục bảo', discount: '4%', range: '≥ 400K', bgClass: 'bg-blue-50', textClass: 'text-blue-600' },
+                                        { rank: 'Kim cương', discount: '5%', range: '≥ 500K', bgClass: 'bg-purple-50', textClass: 'text-purple-600' },
                                     ].map((item) => (
                                         <div key={item.rank} className={`flex justify-between items-center p-2 ${item.bgClass} rounded-lg text-xs sm:text-sm`}>
                                             <div>
@@ -170,11 +170,11 @@ export default function UsersTab({
                                                     className={`text-xs border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 ${rankInfo.bgClass} ${rankInfo.textClass} font-medium`}
                                                 >
                                                     <option value="newbie">Tân binh</option>
-                                                    <option value="bronze">Đồng</option>
-                                                    <option value="silver">Bạc</option>
-                                                    <option value="gold">Vàng</option>
-                                                    <option value="platinum">Platinum</option>
-                                                    <option value="diamond">Kim cương</option>
+                                                    <option value="dong">Đồng</option>
+                                                    <option value="sat">Sắt</option>
+                                                    <option value="vang">Vàng</option>
+                                                    <option value="luc_bao">Lục bảo</option>
+                                                    <option value="kim_cuong">Kim cương</option>
                                                 </select>
                                             ) : (
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${rankInfo.bgClass} ${rankInfo.textClass}`}>
@@ -288,11 +288,11 @@ export default function UsersTab({
                                             className="w-full text-xs border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                                         >
                                             <option value="newbie">Tân binh</option>
-                                            <option value="bronze">Đồng</option>
-                                            <option value="silver">Bạc</option>
-                                            <option value="gold">Vàng</option>
-                                            <option value="platinum">Platinum</option>
-                                            <option value="diamond">Kim cương</option>
+                                            <option value="dong">Đồng</option>
+                                            <option value="sat">Sắt</option>
+                                            <option value="vang">Vàng</option>
+                                            <option value="luc_bao">Lục bảo</option>
+                                            <option value="kim_cuong">Kim cương</option>
                                         </select>
                                     </div>
                                 )}
@@ -332,7 +332,7 @@ export default function UsersTab({
                                         onClick={() => onToggleBan(u)}
                                         className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors cursor-pointer text-sm font-medium ${
                                             u.is_banned
-                                                ? 'bg-orange-50 text-orange-600 hover:bg-orange-100'
+                                                ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
                                                 : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                                         }`}
                                     >

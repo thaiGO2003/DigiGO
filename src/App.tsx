@@ -14,6 +14,7 @@ import SnowEffect from './components/SnowEffect'
 import { useAuth } from './hooks/useAuth'
 import { useEffect } from 'react'
 import { setupAntiDebug } from './lib/antiDebug'
+import ScrollingBanner from './components/ScrollingBanner'
 
 function App() {
   const { user, loading, isRetrying, retryCount } = useAuth()
@@ -44,6 +45,7 @@ function App() {
     <Router>
       <div className="min-h-screen bg-gray-50">
         <Header />
+        <ScrollingBanner />
 
         <main className="pb-20">
           <Routes>

@@ -143,7 +143,7 @@ export default function ProfileUpdateForm({ user, onRefreshProfile }: ProfileUpd
             {canChangeUsername ? 'Lưu tên đăng nhập' : 'Chưa thể đổi'}
           </button>
           {nextUsernameChange && !canChangeUsername && (
-            <p className="text-xs text-orange-600">
+            <p className="text-xs text-yellow-700">
               Có thể đổi lại sau {nextUsernameChange.toLocaleString('vi-VN')}
             </p>
           )}

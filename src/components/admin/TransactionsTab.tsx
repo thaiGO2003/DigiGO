@@ -59,20 +59,37 @@ export default function TransactionsTab({
     const totalDeposits = transactions
         .filter((tx: any) => tx.type === 'top_up' && tx.status === 'completed' && !tx.users?.is_admin)
         .reduce((sum: number, tx: any) => sum + Number(tx.amount), 0)
+    const totalSold = transactions
+        .filter((tx: any) => tx.type === 'purchase' && tx.status === 'completed' && !tx.users?.is_admin)
+        .length
 
     return (
         <div className="space-y-4 sm:space-y-6">
-            {/* Summary Card */}
-            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-xs sm:text-sm font-medium text-gray-500">Tổng tiền nạp thành công</p>
-                        <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
-                            {totalDeposits.toLocaleString('vi-VN')}đ
-                        </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs sm:text-sm font-medium text-gray-500">Tổng tiền nạp thành công</p>
+                            <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
+                                {totalDeposits.toLocaleString('vi-VN')}đ
+                            </p>
+                        </div>
+                        <div className="p-3 sm:p-4 bg-green-50 rounded-full">
+                            <CreditCard className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
+                        </div>
                     </div>
-                    <div className="p-3 sm:p-4 bg-green-50 rounded-full">
-                        <CreditCard className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
+                </div>
+                <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs sm:text-sm font-medium text-gray-500">Sản phẩm đã bán</p>
+                            <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
+                                {totalSold.toLocaleString('vi-VN')}
+                            </p>
+                        </div>
+                        <div className="p-3 sm:p-4 bg-purple-50 rounded-full">
+                            <Package className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
+                        </div>
                     </div>
                 </div>
             </div>

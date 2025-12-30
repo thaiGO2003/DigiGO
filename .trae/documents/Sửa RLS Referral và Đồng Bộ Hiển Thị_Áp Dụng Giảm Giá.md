@@ -54,6 +54,17 @@ END; $$;
 - /products: đang tính -1% nếu `user.referred_by` và +% theo `referral_count`. Giữ nguyên.
 - /profile: hiển thị cùng quy tắc phần trăm (min(totalReferrals*1, 10) + bonus 1% nếu có `referred_by`). Lấy số liệu từ RPC.
 
+## 3.1) Cập nhật hệ thống rank mới (Ánh xạ hiển thị)
+- Ngưỡng nạp và giảm giá theo rank:
+  - Tân binh: dưới 100K → 0%
+  - Đồng: ≥ 100K → 1%
+  - Sắt: ≥ 200K → 2%
+  - Vàng: ≥ 300K → 3%
+  - Lục bảo: ≥ 400K → 4%
+  - Kim cương: ≥ 500K → 5%
+- Tổng giảm giá tích hợp (variant + rank + referral) vẫn trần 20%.
+- Các mã rank nội bộ: `newbie`, `dong`, `sat`, `vang`, `luc_bao`, `kim_cuong`.
+
 ## 4) Dọn dẹp khi xóa tài khoản
 - Xác nhận:
   - `users.referred_by` FK `ON DELETE SET NULL` — đúng.

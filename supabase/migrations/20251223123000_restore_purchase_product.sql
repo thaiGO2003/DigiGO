@@ -214,6 +214,10 @@ BEGIN
   RETURN json_build_object(
     'success', true,
     'key_values', v_key_values,
+    'order_codes', (
+      SELECT COALESCE(array_agg(split_part(tid::text, '-', 1)), ARRAY[]::text[])
+      FROM unnest(v_transaction_ids) AS tid
+    ),
     'message', 'Purchase successful',
     'final_unit_price', v_final_unit_price,
     'total_price', v_total_price,

@@ -85,7 +85,7 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
           <div className="text-2xl font-bold">{referralStats.totalReferrals}</div>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-sm p-4 text-white">
+        <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg shadow-sm p-4 text-white">
           <div className="flex items-center justify-between mb-2">
             <Percent className="h-6 w-6 opacity-80" />
           </div>
@@ -131,11 +131,11 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
               </div>
               <div>
                 <h3 className="font-semibold text-lg capitalize">
-                  {user.rank === 'bronze' ? 'Đồng' :
-                    user.rank === 'silver' ? 'Bạc' :
-                      user.rank === 'gold' ? 'Vàng' :
-                        user.rank === 'platinum' ? 'Platinum' :
-                          user.rank === 'diamond' ? 'Kim cương' : 'Tân binh'}
+                  {user.rank === 'dong' ? 'Đồng' :
+                    user.rank === 'sat' ? 'Sắt' :
+                      user.rank === 'vang' ? 'Vàng' :
+                        user.rank === 'luc_bao' ? 'Lục bảo' :
+                          user.rank === 'kim_cuong' ? 'Kim cương' : 'Tân binh'}
                 </h3>
                 <p className="text-sm text-gray-600">Hạng hiện tại</p>
               </div>
@@ -145,11 +145,11 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
               <div className="flex justify-between">
                 <span className="text-gray-600">Giảm giá hạng:</span>
                 <span className="font-medium text-green-600">
-                  {user.rank === 'bronze' ? '2%' :
-                    user.rank === 'silver' ? '4%' :
-                      user.rank === 'gold' ? '6%' :
-                        user.rank === 'platinum' ? '8%' :
-                          user.rank === 'diamond' ? '10%' : '0%'}
+                  {user.rank === 'dong' ? '1%' :
+                    user.rank === 'sat' ? '2%' :
+                      user.rank === 'vang' ? '3%' :
+                        user.rank === 'luc_bao' ? '4%' :
+                          user.rank === 'kim_cuong' ? '5%' : '0%'}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -164,15 +164,15 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
               )}
               <div className="flex justify-between pt-2 border-t mt-2">
                 <span className="text-gray-600 font-medium">Tổng giảm giá tích luỹ:</span>
-                <span className="font-bold text-purple-600">
+                <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
                   {Math.min(
-                    Math.min(referralStats.totalReferrals * 1, 10) + (user.referred_by ? 1 : 0) + (
-                    user.rank === 'bronze' ? 2 :
-                      user.rank === 'silver' ? 4 :
-                        user.rank === 'gold' ? 6 :
-                          user.rank === 'platinum' ? 8 :
-                            user.rank === 'diamond' ? 10 : 0),
-                    20
+                    Math.min(referralStats.totalReferrals * 1, 10) + (
+                    user.rank === 'dong' ? 1 :
+                      user.rank === 'sat' ? 2 :
+                        user.rank === 'vang' ? 3 :
+                          user.rank === 'luc_bao' ? 4 :
+                            user.rank === 'kim_cuong' ? 5 : 0),
+                    10
                   )}%
                 </span>
               </div>
@@ -188,30 +188,30 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
                 let neededAmount = 0
                 let currentProgress = 0
 
-                if (user.rank === 'diamond') {
+                if (user.rank === 'kim_cuong') {
                   return <p className="text-sm text-gray-600 text-center py-2">Bạn đã đạt hạng cao nhất (Kim Cương)!</p>
                 }
 
-                if (currentDeposited < 500000) {
-                  nextMilestone = 'Đồng (500K)'
+                if (currentDeposited < 100000) {
+                  nextMilestone = 'Đồng (100K)'
+                  neededAmount = 100000 - currentDeposited
+                  currentProgress = currentDeposited / 100000
+                } else if (currentDeposited < 200000) {
+                  nextMilestone = 'Sắt (200K)'
+                  neededAmount = 200000 - currentDeposited
+                  currentProgress = (currentDeposited - 100000) / 100000
+                } else if (currentDeposited < 300000) {
+                  nextMilestone = 'Vàng (300K)'
+                  neededAmount = 300000 - currentDeposited
+                  currentProgress = (currentDeposited - 200000) / 100000
+                } else if (currentDeposited < 400000) {
+                  nextMilestone = 'Lục bảo (400K)'
+                  neededAmount = 400000 - currentDeposited
+                  currentProgress = (currentDeposited - 300000) / 100000
+                } else if (currentDeposited < 500000) {
+                  nextMilestone = 'Kim cương (500K)'
                   neededAmount = 500000 - currentDeposited
-                  currentProgress = currentDeposited / 500000
-                } else if (currentDeposited < 1000000) {
-                  nextMilestone = 'Bạc (1 triệu)'
-                  neededAmount = 1000000 - currentDeposited
-                  currentProgress = (currentDeposited - 500000) / 500000
-                } else if (currentDeposited < 2000000) {
-                  nextMilestone = 'Vàng (2 triệu)'
-                  neededAmount = 2000000 - currentDeposited
-                  currentProgress = (currentDeposited - 1000000) / 1000000
-                } else if (currentDeposited < 3000000) {
-                  nextMilestone = 'Platinum (3 triệu)'
-                  neededAmount = 3000000 - currentDeposited
-                  currentProgress = (currentDeposited - 2000000) / 1000000
-                } else if (currentDeposited < 5000000) {
-                  nextMilestone = 'Kim cương (5 triệu)'
-                  neededAmount = 5000000 - currentDeposited
-                  currentProgress = (currentDeposited - 3000000) / 2000000
+                  currentProgress = (currentDeposited - 400000) / 100000
                 } else {
                   return <p className="text-sm text-gray-600 text-center py-2">Bạn đã đạt hạng cao nhất!</p>
                 }
@@ -297,7 +297,7 @@ export default function ReferralTab({ user, referralStats, referredUsers, loadin
             <li>Chia sẻ link giới thiệu cho bạn bè</li>
             <li>Tăng 1% giảm giá trọn đời với mỗi người giới thiệu thành công</li>
             <li>Người được giới thiệu nhận ngay ưu đãi 1%</li>
-            <li>Tổng giảm giá tích lũy tối đa là 20%</li>
+            <li>Tổng giảm giá tích lũy tối đa là 10%</li>
           </ul>
         </div>
       </div>

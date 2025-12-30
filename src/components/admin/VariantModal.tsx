@@ -5,6 +5,7 @@ import { VariantModalProps } from './types'
 export default function VariantModal({ isOpen, onClose, product, variant, onSave }: VariantModalProps) {
     const [formData, setFormData] = useState({
         name: '',
+        short_name: '',
         price: 0,
         cost_price: 0,
         discount_percent: 0,
@@ -13,22 +14,26 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
         guide_url: '',
         sort_order: 0
     })
+    const [shortNameError, setShortNameError] = useState<string | null>(null)
+    const [checkingUnique, setCheckingUnique] = useState(false)
 
     useEffect(() => {
         if (variant) {
             setFormData({
                 name: variant.name || '',
+                short_name: variant.short_name || '',
                 price: variant.price || 0,
                 cost_price: variant.cost_price || 0,
                 discount_percent: variant.discount_percent || 0,
                 duration_days: variant.duration_days || 0,
                 description: variant.description || '',
                 guide_url: variant.guide_url || '',
-                sort_order: (variant as any).sort_order || 0
+                sort_order: variant.sort_order || 0
             })
         } else {
             setFormData({
                 name: '',
+                short_name: '',
                 price: 0,
                 cost_price: 0,
                 discount_percent: 0,
@@ -38,20 +43,95 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
                 sort_order: 0
             })
         }
+        setShortNameError(null)
     }, [variant, isOpen])
+
+    useEffect(() => {
+        const value = formData.short_name?.trim()
+        if (!value) {
+            setShortNameError(null)
+            return
+        }
+        const handler = setTimeout(async () => {
+            setCheckingUnique(true)
+            try {
+                // Case-insensitive uniqueness check, matching DB unique index on lower(short_name)
+                let query = supabase
+                    .from('product_variants')
+                    .select('id', { count: 'exact', head: true })
+                    .ilike('short_name', value)
+
+                if (variant?.id) {
+                    query = query.neq('id', variant.id)
+                }
+
+                const { count, error } = await query
+                if (error) throw error
+
+                if ((count || 0) > 0) {
+                    setShortNameError('Tên viết tắt đã tồn tại')
+                } else {
+                    setShortNameError(null)
+                }
+            } catch (e: any) {
+                setShortNameError('Không kiểm tra được tính duy nhất')
+            } finally {
+                setCheckingUnique(false)
+            }
+        }, 400)
+        return () => clearTimeout(handler)
+    }, [formData.short_name, variant])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!product) return
+        if (!formData.name.trim()) {
+            alert('Vui lòng nhập Tên gói')
+            return
+        }
+        if (formData.price <= 0) {
+            alert('Vui lòng nhập Giá bán')
+            return
+        }
+        if (shortNameError) {
+            alert(shortNameError)
+            return
+        }
         try {
+            // Final uniqueness check to reduce race conditions (DB unique index is still the source of truth)
+            const shortNameValue = formData.short_name?.trim() || null
+
+            if (shortNameValue) {
+                let checkQuery = supabase
+                    .from('product_variants')
+                    .select('id', { count: 'exact', head: true })
+                    .ilike('short_name', shortNameValue)
+
+                if (variant?.id) {
+                    checkQuery = checkQuery.neq('id', variant.id)
+                }
+
+                const { count: finalCount, error: finalCheckError } = await checkQuery
+                if (finalCheckError) throw finalCheckError
+                if ((finalCount || 0) > 0) {
+                    setShortNameError('Tên viết tắt đã tồn tại')
+                    alert('Tên viết tắt đã tồn tại')
+                    return
+                }
+            }
+
+            const { short_name, ...otherData } = formData
+            const finalData = {
+                ...otherData,
+                short_name: shortNameValue,
+                product_id: product.id
+            }
+
             if (variant) {
-                const { error } = await supabase.from('product_variants').update(formData).eq('id', variant.id)
+                const { error } = await supabase.from('product_variants').update(finalData).eq('id', variant.id)
                 if (error) throw error
             } else {
-                const { error } = await supabase.from('product_variants').insert({
-                    ...formData,
-                    product_id: product.id
-                })
+                const { error } = await supabase.from('product_variants').insert(finalData)
                 if (error) throw error
             }
             onSave()
@@ -79,9 +159,25 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 className="w-full px-3 py-2 border rounded-md"
-                                required
                                 placeholder="VD: 30 ngày"
                             />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Tên viết tắt (tùy chọn)</label>
+                            <input
+                                type="text"
+                                value={formData.short_name || ''}
+                                onChange={(e) => setFormData({ ...formData, short_name: e.target.value })}
+                                className="w-full px-3 py-2 border rounded-md"
+                                required={false}
+                                placeholder="VD: CUR-30D"
+                            />
+                            {shortNameError && (
+                                <p className="text-sm text-red-600 mt-1">{shortNameError}</p>
+                            )}
+                            {checkingUnique && !shortNameError && (
+                                <p className="text-sm text-gray-500 mt-1">Đang kiểm tra tính duy nhất...</p>
+                            )}
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-1">Giá gốc (VNĐ)</label>
@@ -102,7 +198,6 @@ export default function VariantModal({ isOpen, onClose, product, variant, onSave
                                 value={formData.price}
                                 onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
                                 className="w-full px-3 py-2 border rounded-md"
-                                required
                                 min="0"
                                 step="1000"
                             />

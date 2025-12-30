@@ -239,16 +239,45 @@ export default function ProductsPage() {
 
       if (data?.success) {
         // Send Telegram notifications
-        const unitPrice = getUnitPrice();
         const username = user.username || 'N/A'
         const fullName = user.full_name || user.email || 'N/A'
 
-        const orderMsg = `<b>Đơn hàng mới!</b>\n\n- Họ tên: ${fullName}\n- Username: ${username}\n- Sản phẩm: ${selectedProductName}\n- Gói: ${selectedVariant.name}\n- Đơn giá: ${unitPrice.toLocaleString('vi-VN')}đ\n- Số lượng: ${quantity}\n- Tổng tiền: ${data.total_price?.toLocaleString('vi-VN')}đ`
+        // Lấy mã đơn hàng
+        let orderCode = (data as any)?.order_codes?.[0] as string | undefined
+
+        // Fallback 1: manual delivery thường embed mã đơn trong key_values
+        if (!orderCode && selectedVariant.is_manual_delivery) {
+          const kvs = (data as any)?.key_values || [(data as any)?.key_value]
+          const kv = kvs?.[0]
+          if (typeof kv === 'string') {
+            const m = kv.match(/Mã đơn.*:\s*([A-Za-z0-9]+)/)
+            if (m) orderCode = m[1]
+          }
+        }
+
+        // Fallback 2: Nếu RPC không trả về order_codes, thử lấy từ tx_id (nếu có trong data)
+        if (!orderCode && (data as any)?.transaction_id) {
+            orderCode = (data as any).transaction_id.split('-')[0].toUpperCase()
+        } else if (!orderCode && (data as any)?.transaction_ids?.[0]) {
+            orderCode = (data as any).transaction_ids[0].split('-')[0].toUpperCase()
+        }
+
+        const orderCodeLine = `- Mã đơn hàng: <b>${orderCode || 'N/A'}</b>`
+
+        // 1) Đơn hàng mới! (giữ thông tin giá)
+        const unitPrice = (data as any)?.final_unit_price ?? getUnitPrice()
+        const variantDisplay = selectedVariant.short_name ? `${selectedVariant.name} (${selectedVariant.short_name})` : selectedVariant.name
+        const orderMsg = `<b>Đơn hàng mới!</b>\n\n- Họ tên: ${fullName}\n- Username: ${username}\n- Sản phẩm: ${selectedProductName}\n- Gói: ${variantDisplay}\n- Đơn giá: ${Number(unitPrice).toLocaleString('vi-VN')}đ\n- Số lượng: ${quantity}\n- Tổng tiền: ${data.total_price?.toLocaleString('vi-VN')}đ\n${orderCodeLine}`
         sendTelegramNotification(orderMsg, { username, full_name: fullName })
 
-        if ((selectedVariant.stock || 0) <= quantity) {
+        // 2) Hãy nhập hàng! (KHÔNG có giá)
+        const importMsg = `<b>Hãy nhập hàng!</b>\n\n- Họ tên: ${fullName}\n- Username: ${username}\n- Sản phẩm: ${selectedProductName}\n- Gói: ${variantDisplay}\n- Số lượng: ${quantity}\n${orderCodeLine}`
+        sendTelegramNotification(importMsg, { username, full_name: fullName })
+
+        // Cảnh báo hết hàng chỉ áp dụng cho auto-delivery (có kho key)
+        if (!selectedVariant.is_manual_delivery && (selectedVariant.stock || 0) <= quantity) {
           const oosMsg = `<b>⚠️ CẢNH BÁO HẾT HÀNG!</b>\n\n- Sản phẩm: ${selectedProductName}\n- Gói: ${selectedVariant.name}\n- Kho đã hết key.`
-          sendTelegramNotification(oosMsg) // System notification, user info not critical here but can pass if needed
+          sendTelegramNotification(oosMsg)
         }
 
         // Show purchase result
@@ -309,6 +338,12 @@ export default function ProductsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-8">Sản Phẩm</h1>
+      <div className="mb-2 text-sm text-gray-600">
+        {(() => {
+          const totalSoldAll = products.flatMap(p => p.variants || []).reduce((s, v) => s + (v.total_sold || 0), 0)
+          return <span>Tổng đã bán: {totalSoldAll.toLocaleString('vi-VN')}</span>
+        })()}
+      </div>
       <div className="mb-4 sm:mb-6 text-sm text-gray-600">
         Liên hệ hỗ trợ:&nbsp;
         <a href="mailto:luongquocthai.thaigo.2003@gmail.com" className="text-blue-600 hover:underline">
@@ -460,7 +495,7 @@ export default function ProductsPage() {
                 </p>
                 <p className="text-gray-600 mt-1">
                       <span className="text-gray-500">Còn lại:</span>{' '}
-                      <span className="font-semibold text-orange-600">{selectedVariant.stock || 0} sản phẩm</span>
+                      <span className="font-semibold text-yellow-700">{selectedVariant.stock || 0} sản phẩm</span>
                     </p>
                   </div>
 
@@ -506,7 +541,7 @@ export default function ProductsPage() {
                   {/* Discount Breakdown Info */}
                   {(() => {
                     const { breakdown, integratedPercent, buyerPercent } = computePercent(user, selectedVariant)
-                    const accumulatedDiscount = breakdown.rankDiscount + breakdown.referralCountDiscount
+                    const accumulatedDiscount = breakdown.accumulatedDiscount
                     const variantDiscount = breakdown.variantDiscount
                     const totalDiscount = integratedPercent
 
@@ -519,12 +554,12 @@ export default function ProductsPage() {
                           </div>
                         )}
                         <div className="flex justify-between items-center">
-                          <span>Giảm giá tích lũy (Hạng + Tích lũy giới thiệu):</span>
+                          <span>Giảm giá tích lũy (Hạng + Giới thiệu):</span>
                           <span className="font-semibold">-{accumulatedDiscount}%</span>
                         </div>
                         <div className="border-t border-blue-200 my-1 pt-1 flex justify-between items-center font-medium">
-                          <span>Tổng giảm giá tích lũy:</span>
-                          <span className="font-bold text-blue-900">-{totalDiscount}% <span className="text-xs font-normal text-blue-700">(Tối đa 20%)</span></span>
+                          <span>Tổng giảm giá:</span>
+                          <span className="font-bold text-blue-900">-{totalDiscount}% {accumulatedDiscount >= 10 && <span className="text-xs font-normal text-blue-700">(Giảm tích lũy tối đa 10%)</span>}</span>
                         </div>
                         {buyerPercent > 0 && (
                           <div className="flex justify-between items-center">
@@ -591,7 +626,7 @@ export default function ProductsPage() {
 
                   {/* Manual Delivery Warning */}
                   {selectedVariant.is_manual_delivery && (
-                    <div className="bg-orange-50 text-orange-800 p-3 rounded-lg mb-6 text-sm border border-orange-200">
+                    <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg mb-6 text-sm border border-yellow-200">
                       <p className="font-semibold mb-1">⚠️ Lưu ý quan trọng:</p>
                       Sản phẩm này sẽ trả về <span className="font-bold">Mã đơn hàng</span>. Bạn vui lòng gửi mã này cho hỗ trợ khách hàng để nhận key sản phẩm.
                     </div>
@@ -687,7 +722,7 @@ export default function ProductsPage() {
                   <div className="bg-gray-50 rounded-lg p-4 mb-6">
                     {/* Manual Delivery Instruction */}
                     {selectedVariant?.is_manual_delivery && (
-                      <div className="bg-orange-50 text-orange-800 p-3 rounded-lg mb-4 text-sm border border-orange-200">
+                      <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg mb-4 text-sm border border-yellow-200">
                         <p className="font-bold mb-1">👉 Hướng dẫn nhận hàng:</p>
                         Hãy gửi mã giao dịch bên dưới cho CSKH (Chat Support ở góc màn hình) để nhận key sản phẩm bạn nhé!
                       </div>

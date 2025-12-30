@@ -206,11 +206,6 @@ export default function Header() {
         </div>
       </header>
 
-      {/* Notification Banner */}
-      <div className="w-full bg-[#FFFF00] text-black font-bold text-sm sm:text-base text-center p-[10px] m-0">
-        Hiện tại đơn hàng Cursor phải chờ Dev gửi nên khuyến nghị mua từ 10h30 sáng đến 9h tối
-      </div>
-
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}

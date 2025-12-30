@@ -114,7 +114,7 @@ export default function ProductCard({ product, user = null, onPurchase }: Produc
                     Hết hàng
                   </span>
                 ) : (variant.stock || 0) < 5 ? (
-                  <span className="flex-shrink-0 text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                  <span className="flex-shrink-0 text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />
                     Sắp hết
                   </span>
@@ -156,6 +156,9 @@ export default function ProductCard({ product, user = null, onPurchase }: Produc
                       Còn lại: {variant.stock}
                     </span>
                   )}
+                  <span className="text-[10px] text-gray-500 mt-0.5">
+                    Đã bán: {variant.total_sold || 0}
+                  </span>
                 </div>
 
                 {/* Buy Button */}

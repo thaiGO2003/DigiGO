@@ -22,7 +22,7 @@ export type User = {
   referral_count?: number
 }
 
-export type UserRank = 'newbie' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond'
+export type UserRank = 'newbie' | 'dong' | 'sat' | 'vang' | 'luc_bao' | 'kim_cuong'
 
 export type ReferralEarning = {
   id: string
@@ -54,6 +54,7 @@ export type ProductVariant = {
   id: string
   product_id: string
   name: string
+  short_name?: string | null
   price: number
   cost_price?: number
   discount_percent?: number

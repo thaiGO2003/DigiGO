@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { BarChart2, Package, Users, MessageCircle, CreditCard, Landmark, Wrench, ShoppingCart } from 'lucide-react'
+import { BarChart2, Package, Users, MessageCircle, CreditCard, Landmark, Wrench, ShoppingCart, Settings } from 'lucide-react'
 import { supabase, Product, ProductVariant, User, ChatMessage, BankConfig } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
@@ -20,7 +20,8 @@ import {
   removeVietnameseTones,
   StatsTab,
   UtilitiesTab,
-  ImportTab
+  ImportTab,
+  SettingsTab
 } from './admin'
 export default function AdminPage() {
   const { user } = useAuth()
@@ -38,6 +39,7 @@ export default function AdminPage() {
     { id: 'bank', label: 'Ngân hàng', icon: Landmark },
     { id: 'utilities', label: 'Tiện ích', icon: Wrench },
     { id: 'import', label: 'Nhập hàng', icon: ShoppingCart },
+    { id: 'settings', label: 'Cài đặt', icon: Settings },
   ]
 
   useEffect(() => {
@@ -654,6 +656,7 @@ export default function AdminPage() {
 
       {activeTab === 'utilities' && <UtilitiesTab />}
       {activeTab === 'import' && <ImportTab />}
+      {activeTab === 'settings' && <SettingsTab />}
 
       {/* Modals */}
       <ProductModal

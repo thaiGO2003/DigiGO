@@ -22,16 +22,16 @@ Hệ thống thương mại điện tử DigiGOVN - Nền tảng mua sắm sản
   - Cập nhật thông tin cá nhân (Họ tên).
   - Xem lịch sử mua hàng.
 - **Hệ thống Rank theo số tiền nạp**:
-  - **Đồng**: 0 - 500K (không giảm giá)
-  - **Bạc**: 500K - 1 triệu (giảm giá 2%)
-  - **Vàng**: 1 - 2 triệu (giảm giá 4%)
-  - **Platinum**: 2 - 3 triệu (giảm giá 6%)
-  - **Kim cương**: 3 - 5 triệu (giảm giá 10%)
-  - **Kim cương+**: Trên 5 triệu (giảm giá 10%)
+  - **Tân binh**: Dưới 100K (không giảm giá)
+  - **Đồng**: ≥ 100K (giảm giá 1%)
+  - **Sắt**: ≥ 200K (giảm giá 2%)
+  - **Vàng**: ≥ 300K (giảm giá 3%)
+  - **Lục bảo**: ≥ 400K (giảm giá 4%)
+  - **Kim cương**: ≥ 500K (giảm giá 5%)
 - **Hệ thống giảm giá giới thiệu**:
   - Giảm 1% cho mỗi người giới thiệu (tối đa 10%)
   - Cả người giới thiệu và người được giới thiệu đều được giảm 1%
-  - Tổng giảm giá tối đa: 20% (10% từ rank + 10% từ giới thiệu)
+  - Tổng giảm giá tối đa: 20% (5% từ rank + phần còn lại từ giới thiệu/variant)
 - **Hỗ trợ**:
   - Chat trực tuyến với Admin.
   - Tham gia nhóm Zalo hỗ trợ.

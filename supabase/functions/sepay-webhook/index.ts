@@ -147,7 +147,7 @@ async function processTransaction(transaction: any, amount_in: number, payload: 
 
   const { data: user, error: userFetchError } = await supabaseClient
     .from('users')
-    .select('balance, full_name, username')
+    .select('balance, total_deposited, full_name, username')
     .eq('id', transaction.user_id)
     .single()
 
@@ -155,7 +155,7 @@ async function processTransaction(transaction: any, amount_in: number, payload: 
 
   const { error: updateBalanceError } = await supabaseClient
     .from('users')
-    .update({ balance: user.balance + amount_in })
+    .update({ balance: user.balance + amount_in, total_deposited: (user.total_deposited ?? 0) + amount_in })
     .eq('id', transaction.user_id)
 
   if (updateBalanceError) throw updateBalanceError
